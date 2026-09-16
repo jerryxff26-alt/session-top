@@ -58,6 +58,22 @@ func Why(a *usage.Analysis) string {
 		}
 		b.WriteByte('\n')
 	}
+	if len(w.Patterns) > 0 {
+		b.WriteString(titleStyle.Render("Observed patterns"))
+		b.WriteByte('\n')
+		b.WriteByte('\n')
+		for _, p := range w.Patterns {
+			mark := okStyle.Render("✓")
+			if p.Warn {
+				mark = warnStyle.Render("⚠")
+			}
+			fmt.Fprintf(&b, "%s %s\n", mark, p.Title)
+			if p.Detail != "" {
+				fmt.Fprintf(&b, "  %s\n", mutedStyle.Render(p.Detail))
+			}
+			b.WriteByte('\n')
+		}
+	}
 	if w.Expensive != nil {
 		b.WriteString("Most expensive interval:\n")
 		fmt.Fprintf(&b, "%s–%s\n", formatClock(w.Expensive.Start), formatClock(w.Expensive.End))

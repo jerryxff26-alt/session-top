@@ -99,6 +99,8 @@ func SessionDetail(s *usage.SessionSummary) string {
 	}
 	fmt.Fprintf(&b, "Observed %s tokens  %d turns\n", formatTokens(s.ObservedTokens), s.Turns)
 	b.WriteByte('\n')
+	b.WriteString(renderAutopsy(s))
+	b.WriteByte('\n')
 	for i, it := range s.Timeline {
 		fmt.Fprintf(&b, "%s  %s\n", formatClock(it.Time), it.Label)
 		switch it.Kind {
@@ -128,6 +130,54 @@ func SessionDetail(s *usage.SessionSummary) string {
 			fmt.Fprintf(&b, "       %s\n", formatClock(it.Time))
 		}
 		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+func renderAutopsy(s *usage.SessionSummary) string {
+	a := s.Autopsy
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("AUTOPSY (observed)"))
+	b.WriteByte('\n')
+	b.WriteString(rule(40))
+	b.WriteByte('\n')
+	fmt.Fprintf(&b, "%s  ·  %d turns  ·  %s tokens\n",
+		formatDuration(a.Duration), a.Turns, formatTokens(a.ObservedTokens))
+	b.WriteByte('\n')
+	fmt.Fprintf(&b, "  %s %s    %s\n", padRight("input", 12), padLeft(formatPct(a.InputPct), 6), formatTokens(a.InputTokens))
+	cached := "n/a"
+	if a.InputTokens > 0 {
+		cached = formatPct(a.CachedShare) + " of input"
+	}
+	fmt.Fprintf(&b, "  %s %s\n", padRight("cached", 12), cached)
+	fmt.Fprintf(&b, "  %s %s    %s\n", padRight("output", 12), padLeft(formatPct(a.OutputPct), 6), formatTokens(a.OutputTokens))
+	fmt.Fprintf(&b, "  %s %s    %s\n", padRight("reasoning", 12), padLeft(formatPct(a.ReasoningPct), 6), formatTokens(a.ReasoningTokens))
+	b.WriteByte('\n')
+	fmt.Fprintf(&b, "  %s %d", padRight("tools", 12), a.ToolCalls)
+	if len(a.TopTools) > 0 {
+		parts := make([]string, 0, len(a.TopTools))
+		for _, t := range a.TopTools {
+			parts = append(parts, fmt.Sprintf("%s %d", t.Name, t.Count))
+		}
+		fmt.Fprintf(&b, "    %s", strings.Join(parts, " · "))
+	}
+	b.WriteByte('\n')
+	b.WriteByte('\n')
+	b.WriteString("Patterns\n")
+	if len(a.Patterns) == 0 {
+		b.WriteString(mutedStyle.Render("  none flagged"))
+		b.WriteByte('\n')
+		return b.String()
+	}
+	for _, p := range a.Patterns {
+		mark := okStyle.Render("✓")
+		if p.Warn {
+			mark = warnStyle.Render("⚠")
+		}
+		fmt.Fprintf(&b, "%s %s\n", mark, p.Title)
+		if p.Detail != "" {
+			fmt.Fprintf(&b, "  %s\n", mutedStyle.Render(p.Detail))
+		}
 	}
 	return b.String()
 }

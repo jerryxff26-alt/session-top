@@ -110,6 +110,7 @@ func buildWhy(rollouts []*codex.Rollout, sessions []SessionSummary, deltas []sna
 	w.Largest = largest
 	w.Causes = potentialCauses(obs)
 	w.Expensive = mostExpensive(deltas, amb, start, end)
+	w.Patterns, w.TokenLeader, w.QuotaLeader = crossSessionPatterns(sessions)
 	return w
 }
 

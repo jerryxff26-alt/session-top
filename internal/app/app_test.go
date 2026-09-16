@@ -63,6 +63,9 @@ func TestOverviewWhySessionsDetail(t *testing.T) {
 		"Observed",
 		"Potential causes",
 		"Fix OAuth callback",
+		"Token rank and official quota rank differ",
+		"Continuation follow-ups",
+		"Fork cluster",
 	} {
 		if !strings.Contains(why, want) {
 			t.Errorf("why missing %q\n%s", want, why)
@@ -107,9 +110,24 @@ func TestOverviewWhySessionsDetail(t *testing.T) {
 		"agent follow-up",
 		"compaction",
 		"Expensive turn",
+		"AUTOPSY (observed)",
+		"Patterns",
+		"input",
+		"cached",
+		"output",
+		"of input",
+		"continuation-style follow-ups",
 	} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("detail missing %q\n%s", want, detail)
+		}
+	}
+	if !strings.Contains(detail, "%") {
+		t.Errorf("autopsy missing mix percents:\n%s", detail)
+	}
+	for _, bad := range []string{"caused by", "was caused"} {
+		if strings.Contains(strings.ToLower(detail), bad) {
+			t.Errorf("session autopsy asserted proven causation %q\n%s", bad, detail)
 		}
 	}
 
