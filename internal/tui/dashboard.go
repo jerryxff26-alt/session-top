@@ -56,7 +56,7 @@ func Overview(a *usage.Analysis) string {
 			if c.QuotaDelta != nil {
 				val = formatPct(*c.QuotaDelta)
 			}
-			fmt.Fprintf(&b, "%d. %s %s\n", i+1, padRight(c.Title, 24), val)
+			fmt.Fprintf(&b, "%d. %s %s\n", i+1, padRight(truncateWidth(cleanSessionTitle(c.Title), 24), 24), val)
 		}
 	}
 	if len(a.Ambiguous) > 0 {
