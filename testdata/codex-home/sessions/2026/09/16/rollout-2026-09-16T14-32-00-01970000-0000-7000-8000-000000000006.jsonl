@@ -1,4 +1,4 @@
-{"timestamp":"2026-09-16T14:32:00.000Z","type":"session_meta","payload":{"id":"01970000-0000-7000-8000-000000000006","session_id":"01970000-0000-7000-8000-000000000006","timestamp":"2026-09-16T14:32:00.000Z","cwd":"/workspace/overlap-a","originator":"codex_cli","cli_version":"0.154.0","source":"cli","model_provider":"openai"}}
+{"timestamp":"2026-09-16T14:32:00.000Z","type":"session_meta","payload":{"id":"01970000-0000-7000-8000-000000000006","session_id":"01970000-0000-7000-8000-000000000006","timestamp":"2026-09-16T14:32:00.000Z","cwd":"/workspace/overlap-a","originator":"codex_cli","cli_version":"0.154.0","source":"cli","model_provider":"openai","forked_from_id":"01970000-0000-7000-8000-000000000001"}}
 {"timestamp":"2026-09-16T14:32:01.000Z","type":"turn_context","payload":{"model":"gpt-5.4","turn_id":"turn-f1"}}
 {"timestamp":"2026-09-16T14:32:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Overlap Alpha"}]}}
 {"timestamp":"2026-09-16T14:32:03.000Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-f1","started_at":1789567260}}

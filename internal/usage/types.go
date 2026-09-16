@@ -45,26 +45,57 @@ type TodayStats struct {
 
 // SessionSummary is one session's OBSERVED totals plus unique INFERRED 5h Δ.
 type SessionSummary struct {
-	ID              string
-	Title           string
-	CWD             string
-	Model           string
-	StartedAt       time.Time
-	EndedAt         time.Time
+	ID                    string
+	Title                 string
+	CWD                   string
+	Model                 string
+	StartedAt             time.Time
+	EndedAt               time.Time
+	Turns                 int
+	InputTokens           int64
+	CachedTokens          int64
+	OutputTokens          int64
+	ReasoningTokens       int64
+	ObservedTokens        int64
+	ToolCalls             int
+	Compactions           int
+	QuotaDelta            *float64 // unique 5h attribution only
+	Ambiguous             bool
+	Timeline              []TimelineItem
+	ExpensiveTurn         *int // index into Timeline
+	ContextGrowing        bool
+	LastTurn              *TimelineItem
+	ParentID              string
+	SiblingIDs            []string
+	SiblingTitles         []string
+	ContinuationFollowUps int
+	TopTools              []ToolCount
+	Autopsy               Autopsy
+}
+
+// ToolCount is an OBSERVED tool-name tally.
+type ToolCount struct {
+	Name  string
+	Count int
+}
+
+// Autopsy is the OBSERVED session shape used by session detail. Not a quota formula.
+type Autopsy struct {
+	Duration        time.Duration
 	Turns           int
+	ObservedTokens  int64
 	InputTokens     int64
 	CachedTokens    int64
 	OutputTokens    int64
 	ReasoningTokens int64
-	ObservedTokens  int64
+	InputPct        float64
+	CachedShare     float64 // cached as a share of input
+	OutputPct       float64
+	ReasoningPct    float64
 	ToolCalls       int
+	TopTools        []ToolCount
 	Compactions     int
-	QuotaDelta      *float64 // unique 5h attribution only
-	Ambiguous       bool
-	Timeline        []TimelineItem
-	ExpensiveTurn   *int // index into Timeline
-	ContextGrowing  bool
-	LastTurn        *TimelineItem
+	Patterns        []Cause
 }
 
 // Consumer is a top-quota (or top-token) row for the overview.
@@ -110,6 +141,9 @@ type WhyReport struct {
 	Observed    WhyObserved
 	Causes      []Cause
 	Expensive   *AmbiguousInterval // most expensive snapshot interval (may be unique)
+	Patterns    []Cause            // cross-session OBSERVED patterns
+	TokenLeader *Consumer
+	QuotaLeader *Consumer
 }
 
 // WhyObserved is OBSERVED activity inside the why window.

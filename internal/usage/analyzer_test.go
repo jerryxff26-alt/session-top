@@ -65,6 +65,21 @@ func TestOfficialInferredObserved(t *testing.T) {
 	if oauth.Compactions != 2 {
 		t.Fatalf("oauth compactions %d want 2", oauth.Compactions)
 	}
+	if oauth.ContinuationFollowUps < 1 {
+		t.Fatalf("oauth continuation follow-ups %d", oauth.ContinuationFollowUps)
+	}
+	if oauth.Autopsy.CachedShare < 30 {
+		t.Fatalf("oauth cached share %.1f, want high cache", oauth.Autopsy.CachedShare)
+	}
+	if oauth.Autopsy.InputPct < 90 {
+		t.Fatalf("oauth input pct %.1f", oauth.Autopsy.InputPct)
+	}
+	if len(oauth.Autopsy.Patterns) == 0 {
+		t.Fatal("oauth autopsy has no patterns")
+	}
+	if len(oauth.SiblingIDs) == 0 {
+		t.Fatal("oauth should cluster with forked child")
+	}
 	if oauth.ExpensiveTurn == nil {
 		t.Fatal("expensive turn unmarked")
 	}

@@ -36,6 +36,7 @@ func (t TokenUsage) IsZero() bool {
 // Session is metadata from a rollout session_meta envelope.
 type Session struct {
 	ID         string
+	ParentID   string
 	CWD        string
 	Originator string
 	Source     string

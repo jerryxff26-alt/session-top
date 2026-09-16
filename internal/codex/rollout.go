@@ -29,6 +29,7 @@ type envelope struct {
 type sessionMetaPayload struct {
 	ID            string `json:"id"`
 	SessionID     string `json:"session_id"`
+	ForkedFromID  string `json:"forked_from_id"`
 	CWD           string `json:"cwd"`
 	Timestamp     string `json:"timestamp"`
 	Originator    string `json:"originator"`
@@ -225,6 +226,7 @@ func (st *parseState) ingestSessionMeta(ts time.Time, raw json.RawMessage) {
 		started = ts
 	}
 	st.ro.Session.ID = id
+	st.ro.Session.ParentID = p.ForkedFromID
 	st.ro.Session.CWD = p.CWD
 	st.ro.Session.Originator = p.Originator
 	st.ro.Session.Source = p.Source

@@ -21,6 +21,8 @@ func buildSessions(rollouts []*codex.Rollout, unique map[string]float64, ambIDs 
 		}
 		out = append(out, s)
 	}
+	attachForks(out)
+	finishAutopsies(out)
 	sort.Slice(out, func(i, j int) bool {
 		di, dj := out[i].QuotaDelta, out[j].QuotaDelta
 		if di != nil && dj != nil && *di != *dj {
@@ -42,13 +44,16 @@ func buildSessions(rollouts []*codex.Rollout, unique map[string]float64, ambIDs 
 
 func summarize(r *codex.Rollout, snaps []codex.QuotaSnapshot) SessionSummary {
 	s := SessionSummary{
-		ID:          r.Session.ID,
-		CWD:         r.Session.CWD,
-		StartedAt:   r.Session.StartedAt,
-		EndedAt:     r.EndedAt(),
-		Turns:       len(r.Turns),
-		ToolCalls:   len(r.Tools),
-		Compactions: len(r.Compactions),
+		ID:                    r.Session.ID,
+		ParentID:              r.Session.ParentID,
+		CWD:                   r.Session.CWD,
+		StartedAt:             r.Session.StartedAt,
+		EndedAt:               r.EndedAt(),
+		Turns:                 len(r.Turns),
+		ToolCalls:             len(r.Tools),
+		Compactions:           len(r.Compactions),
+		ContinuationFollowUps: countContinuations(r.Prompts),
+		TopTools:              tallyTools(r.Tools),
 	}
 	if s.Turns == 0 {
 		s.Turns = len(r.Usage)
