@@ -3,8 +3,12 @@ package tui
 import (
 	"fmt"
 	"math"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func formatTokens(n int64) string {
@@ -105,30 +109,85 @@ func formatClockUTC(t time.Time) string {
 }
 
 func padRight(s string, n int) string {
-	w := runeLen(s)
+	w := lipgloss.Width(s)
 	if w >= n {
 		return s
 	}
 	return s + strings.Repeat(" ", n-w)
 }
 
-func runeLen(s string) int {
-	return len([]rune(s))
-}
-
-func truncateRunes(s string, n int) string {
-	r := []rune(s)
-	if n <= 1 || len(r) <= n {
-		return s
-	}
-	return string(r[:n-1]) + "…"
-}
-
 func padLeft(s string, n int) string {
-	if len(s) >= n {
+	w := lipgloss.Width(s)
+	if w >= n {
 		return s
 	}
-	return strings.Repeat(" ", n-len(s)) + s
+	return strings.Repeat(" ", n-w) + s
+}
+
+func truncateWidth(s string, n int) string {
+	if n <= 1 || lipgloss.Width(s) <= n {
+		return s
+	}
+	const ell = "…"
+	ew := lipgloss.Width(ell)
+	var b strings.Builder
+	w := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if w+rw+ew > n {
+			break
+		}
+		b.WriteRune(r)
+		w += rw
+	}
+	return b.String() + ell
+}
+
+func fitRight(s string, n int) string {
+	return padRight(truncateWidth(s, n), n)
+}
+
+var (
+	mdLinkRe  = regexp.MustCompile(`\[([^\]\n]+)\]\([^)]*\)`)
+	absPathRe = regexp.MustCompile(`(?:/Users|/home)/[^\s,，]+`)
+)
+
+var leftoverBracketRe = regexp.MustCompile(`\[([^\]\n]+)\]`)
+var danglingBracketRe = regexp.MustCompile(`\[[^\]\n]*$`)
+
+func cleanSessionTitle(s string) string {
+	s = strings.TrimSpace(s)
+	s = mdLinkRe.ReplaceAllString(s, "$1")
+	s = leftoverBracketRe.ReplaceAllString(s, "$1")
+	s = danglingBracketRe.ReplaceAllString(s, "")
+	s = absPathRe.ReplaceAllStringFunc(s, func(p string) string {
+		p = strings.TrimRight(p, "/")
+		base := filepath.Base(p)
+		if base == "" || base == "/" {
+			return p
+		}
+		return base
+	})
+	s = strings.TrimPrefix(s, "/goal ")
+	s = strings.Join(strings.Fields(s), " ")
+	return s
+}
+
+func shortSessionID(id string) string {
+	id = strings.TrimSpace(id)
+	if i := strings.LastIndex(id, "-"); i >= 0 && i+1 < len(id) {
+		last := id[i+1:]
+		if len(last) >= 12 {
+			return last[len(last)-12:]
+		}
+		if last != "" {
+			return last
+		}
+	}
+	if len(id) > 12 {
+		return id[len(id)-12:]
+	}
+	return id
 }
 
 func rule(n int) string {

@@ -81,9 +81,10 @@ func TestOverviewWhySessionsDetail(t *testing.T) {
 
 	sessions := run(t, "sessions")
 	for _, want := range []string{
-		"QUOTA Δ",
+		"QUOTA",
 		"TOKENS",
 		"TURNS",
+		"ID",
 		"Fix OAuth callback",
 		"-7.3%",
 		"921K",

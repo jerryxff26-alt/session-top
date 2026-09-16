@@ -8,40 +8,70 @@ import (
 	"github.com/session-top/session-top/internal/usage"
 )
 
+const (
+	sessIDW    = 12
+	sessTitleW = 38
+	sessQuotaW = 6
+	sessTokW   = 7
+	sessTurnW  = 5
+)
+
+func sessionsRow(id, title, quota, tokens, turns string) string {
+	return fitRight(id, sessIDW) + " │ " +
+		fitRight(title, sessTitleW) + " │ " +
+		padLeft(quota, sessQuotaW) + " │ " +
+		padLeft(tokens, sessTokW) + " │ " +
+		padLeft(turns, sessTurnW)
+}
+
+func sessionsRule() string {
+	return strings.Repeat("─", sessIDW) + "─┼─" +
+		strings.Repeat("─", sessTitleW) + "─┼─" +
+		strings.Repeat("─", sessQuotaW) + "─┼─" +
+		strings.Repeat("─", sessTokW) + "─┼─" +
+		strings.Repeat("─", sessTurnW)
+}
+
 // Sessions renders the ranked session table.
 func Sessions(a *usage.Analysis) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s %s %s %s\n",
-		padRight("SESSION", 32),
-		padLeft("QUOTA Δ", 10),
-		padLeft("TOKENS", 10),
-		padLeft("TURNS", 8),
-	)
-	b.WriteString(rule(62))
+	header := sessionsRow("ID", "SESSION", "QUOTA", "TOKENS", "TURNS")
+	b.WriteString(header)
+	b.WriteByte('\n')
+	b.WriteString(sessionsRule())
 	b.WriteByte('\n')
 	if len(a.Sessions) == 0 {
 		b.WriteString(mutedStyle.Render("No sessions found."))
 		b.WriteByte('\n')
 		return b.String()
 	}
+	anyAmbiguous := false
 	for _, s := range a.Sessions {
 		delta := "—"
 		if s.QuotaDelta != nil {
 			delta = "-" + formatPct(*s.QuotaDelta)
 		} else if s.Ambiguous {
-			delta = "ambiguous"
+			delta = "~"
+			anyAmbiguous = true
 		}
-		title := s.Title
+		title := cleanSessionTitle(s.Title)
 		if title == "" {
 			title = s.ID
 		}
-		title = truncateRunes(title, 32)
-		fmt.Fprintf(&b, "%s %s %s %s\n",
-			padRight(title, 32),
-			padLeft(delta, 10),
-			padLeft(formatTokens(s.ObservedTokens), 10),
-			padLeft(fmt.Sprintf("%d", s.Turns), 8),
-		)
+		id := shortSessionID(s.ID)
+		b.WriteString(sessionsRow(
+			id,
+			title,
+			delta,
+			formatTokens(s.ObservedTokens),
+			fmt.Sprintf("%d", s.Turns),
+		))
+		b.WriteByte('\n')
+	}
+	if anyAmbiguous {
+		b.WriteByte('\n')
+		b.WriteString(mutedStyle.Render("~  Attribution: ambiguous (overlapping sessions)"))
+		b.WriteByte('\n')
 	}
 	return b.String()
 }
@@ -52,7 +82,11 @@ func SessionDetail(s *usage.SessionSummary) string {
 		return "session not found\n"
 	}
 	var b strings.Builder
-	b.WriteString(titleStyle.Render(s.Title))
+	title := cleanSessionTitle(s.Title)
+	if title == "" {
+		title = s.Title
+	}
+	b.WriteString(titleStyle.Render(title))
 	b.WriteByte('\n')
 	b.WriteString(mutedStyle.Render(s.ID))
 	b.WriteByte('\n')
