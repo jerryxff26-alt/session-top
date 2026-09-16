@@ -1,0 +1,9 @@
+/session-top
+/session-top.exe
+/codex-top
+/codex-top.exe
+/dist/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.DS_Store
