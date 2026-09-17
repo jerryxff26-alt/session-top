@@ -2,7 +2,7 @@
 
 session-top already answers *where quota and tokens went* (overview, sessions, autopsy, why). Distillation is a **side path** that answers a different question: *what should the next session in this repo already know, so it does not pay tuition again?*
 
-This document is the design and the **value goals**. It does not implement `session-top distill` and it does not call a model.
+This document is the design and the **value goals**. The extract CLI (`session-top distill`) is model-free. The orchestrator skill **dont-let-your-token-die** depends on that CLI. Generating a *product* skill with a live LLM is still opt-in and out of the default core.
 
 ## Value goals
 
@@ -29,7 +29,6 @@ If those facts are in a loaded skill, the next session should spend less OBSERVE
 
 ## Non-goals
 
-- Implementing `session-top distill` in this document's PR sequence is future work; this file is the contract.
 - Default-on model calls. Distill is **opt-in**, never part of `session-top`, `why`, `watch`, or autopsy.
 - Auto-enabling a skill without **human review**. No write into Codex/Grok skill directories unless the user later copies a reviewed draft.
 - Feeding **raw rollout** JSONL (or full transcripts) to a model.
@@ -44,7 +43,7 @@ Two products, one data plane. Do not embed a chatbot in session-top.
 
 ### CLI (session-top) — extract, no model required
 
-`session-top distill` (future command) only:
+`session-top distill` only:
 
 1. Selects sessions by **project (`cwd`)** then **time range**.
 2. Filters noise (continuation-only prompts, fork replays of a parent, empty goals).
@@ -65,6 +64,31 @@ Only if the user opts in (`--write-skill` or piping the digest to a model they c
 Autopsy/why stay local. Distill is an explicit side path, not the default 100%-local core.
 
 There is no default that calls a model when the user runs `session-top` with no subcommand.
+
+## Orchestrator skill: dont-let-your-token-die
+
+English name (user: “dont let your token die”): **dont-let-your-token-die**.
+
+The CLI can run alone. Inside Codex, the skill is the **orchestrator** and session-top is a **dependency**:
+
+1. Check `session-top` is on `PATH`.
+2. Clarify **project (`cwd`)**, then **time range**, then **content** (corrections / repo facts / don'ts) before extracting.
+3. Exec `session-top distill --cwd … --since …` (optional `--json`). Read **only the digest**.
+4. Never `cat` raw rollout JSONL. Never auto-install a generated skill.
+
+Shipped path: `.codex/skills/dont-let-your-token-die/SKILL.md` (also `.agents/skills/` so Codex scanners that walk `.agents/skills` find it).
+
+### OSS review (borrow patterns, do not clone)
+
+| Source | Takeaway | We do / don't |
+| --- | --- | --- |
+| [Codex custom skills](https://developers.openai.com/codex/skills/create-skill) | Progressive disclosure; `SKILL.md` + optional `scripts/`; repo vs user scope | Instruction-only skill; exec CLI rather than re-parse JSONL |
+| [gouzigouzi/codex-local-token-usage-skills](https://github.com/gouzigouzi/codex-local-token-usage-skills) | CLI is the core; skill only says when to run which command | Same split |
+| [entireio session-to-skill](https://github.com/entireio/skills/blob/main/skills/session-to-skill/SKILL.md) | Ask the reusable behavior **before** reading transcripts; default present draft, write only after destination | Clarify cwd/time/content first; no auto-install |
+| [skill-distill](https://www.npmjs.com/package/skill-distill) | CLI from sessions; `--install` exists | **Reject `--install` as default** (and do not ship it) |
+| [c-daly/agent-swarm distill](https://agent-skills.md/skills/c-daly/agent-swarm/distill) | Bucket pattern / pitfall / preference | Digest fields: goal, corrections (pitfalls), tools/files (approach) |
+| [lokikill123/codex-token-skills](https://github.com/lokikill123/codex-token-skills) | Freeze short skills; don't dump huge instructions every turn | Keep orchestrator SKILL.md short; product skills stay small |
+| [Redclawww/savethetokens](https://github.com/Redclawww/savethetokens) | Hygiene *during* a live session | Different problem; we distill *past* sessions into future know-how |
 
 ## Invocation (project default, time secondary)
 
@@ -202,9 +226,7 @@ human review → enable by hand or throw away
 
 ## PR Plan
 
-Not implemented in this change. When implementing:
-
-1. **Extract CLI** — `session-top distill` writes extracts + digest only (no model). Tests on testdata cwd + time window.
-2. **Filter quality** — continuation/fork drop + caps; tests on fixtures with 继续 and `forked_from_id`.
-3. **Opt-in draft writer** — separate package; skipped unless flag set; golden test on a tiny digest → SKILL.md.draft shape (no live LLM required if the writer is injectable).
-4. **Docs / README** — link this design; restate that autopsy/why stay local.
+1. **Extract CLI (this change)** — `session-top distill` writes a bounded digest (no model). Tests on testdata `--cwd /workspace/oauth-app`.
+2. **Orchestrator skill (this change)** — `dont-let-your-token-die` depends on the CLI; stepwise cwd/time/content; no raw JSONL; no auto-install.
+3. **Opt-in draft writer** — later; skipped unless the user asks the skill to draft after seeing the digest.
+4. **Docs / README** — this file + README usage line.

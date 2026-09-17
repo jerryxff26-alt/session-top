@@ -70,6 +70,7 @@ type SessionSummary struct {
 	SiblingTitles         []string
 	ContinuationFollowUps int
 	TopTools              []ToolCount
+	Corrections           []string
 	Autopsy               Autopsy
 }
 

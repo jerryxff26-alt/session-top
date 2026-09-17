@@ -58,7 +58,12 @@ session-top why          # potential causes for a recent quota drop
 session-top sessions     # rank sessions by inferred quota Δ
 session-top session <id> # turn timeline for one session
 session-top watch        # live-refreshing view
+session-top distill      # project digest (cwd + time; no model)
 ```
+
+Codex orchestrator skill (depends on the CLI; clarify cwd / time / content first):
+
+`.codex/skills/dont-let-your-token-die/` — invoke `$dont-let-your-token-die`
 
 Codex data is read from `~/.codex/sessions/**/rollout-*.jsonl`. Override the Codex home directory with `CODEX_HOME`.
 
