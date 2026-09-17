@@ -143,6 +143,41 @@ func TestOverviewWhySessionsDetail(t *testing.T) {
 	}
 }
 
+func TestDistillShippedPath(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "")
+	out := run(t, "distill", "--cwd", "/workspace/oauth-app", "--from", "2026-09-16", "--to", "2026-09-17")
+	for _, want := range []string{
+		"DISTILL (observed digest)",
+		"/workspace/oauth-app",
+		"Fix OAuth callback",
+		"01970000-0000-7000-8000-000000000001",
+		"tools",
+		"observed",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("distill missing %q\n%s", want, out)
+		}
+	}
+	for _, bad := range []string{
+		"Refactor database",
+		"Overlap Alpha",
+		"Overlap Beta",
+		"codex exec batch",
+		strings.Repeat("A", 200),
+	} {
+		if strings.Contains(out, bad) {
+			t.Errorf("distill mixed unrelated project or raw payload %q\n%s", bad, out)
+		}
+	}
+	js := run(t, "distill", "--cwd", "/workspace/oauth-app", "--from", "2026-09-16", "--to", "2026-09-17", "--json")
+	if !strings.Contains(js, `"session_id"`) || !strings.Contains(js, "Fix OAuth callback") {
+		t.Fatalf("json digest:\n%s", js)
+	}
+	if strings.Contains(js, strings.Repeat("A", 200)) {
+		t.Fatal("json included compacted payload")
+	}
+}
+
 func TestNoOpenAIKeyRequired(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")

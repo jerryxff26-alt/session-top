@@ -88,6 +88,40 @@ func sessionPatterns(s *SessionSummary, mix Autopsy) []Cause {
 	return out
 }
 
+func correctionsFor(r *codex.Rollout) []string {
+	var out []string
+	for i, p := range r.Prompts {
+		if i == 0 {
+			continue
+		}
+		if isContinuationPrompt(p.Text) {
+			continue
+		}
+		if !isCorrectionPrompt(p.Text) {
+			continue
+		}
+		out = append(out, p.Text)
+		if len(out) >= 8 {
+			break
+		}
+	}
+	return out
+}
+
+func isCorrectionPrompt(text string) bool {
+	t := strings.ToLower(strings.TrimSpace(text))
+	if t == "" {
+		return false
+	}
+	keys := []string{"don't", "do not", "不要", "别", "谁让你", "stop changing", "never "}
+	for _, k := range keys {
+		if strings.Contains(t, k) {
+			return true
+		}
+	}
+	return false
+}
+
 func countContinuations(prompts []codex.Prompt) int {
 	n := 0
 	for i, p := range prompts {

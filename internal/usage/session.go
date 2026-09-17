@@ -77,6 +77,7 @@ func summarize(r *codex.Rollout, snaps []codex.QuotaSnapshot) SessionSummary {
 		}
 	}
 	s.Title = titleFor(r)
+	s.Corrections = correctionsFor(r)
 	s.Timeline = buildTimeline(r, snaps)
 	s.ExpensiveTurn = expensiveIndex(s.Timeline)
 	s.ContextGrowing = contextGrowing(r.Usage)

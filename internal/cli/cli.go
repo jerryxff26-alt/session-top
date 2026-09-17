@@ -59,6 +59,8 @@ func Run(w io.Writer, args []string, home string, now time.Time) error {
 			return fmt.Errorf("session not found: %s", rest[0])
 		}
 		return tui.WriteSessionDetail(w, s)
+	case "distill":
+		return runDistill(w, rest, a, now)
 	default:
 		return fmt.Errorf("unknown command %q\n\n%s", cmd, Help())
 	}
@@ -85,5 +87,6 @@ func Help() string {
 	b.WriteString("  session-top sessions     Rank sessions\n")
 	b.WriteString("  session-top session <id> Session timeline\n")
 	b.WriteString("  session-top watch        Live view\n")
+	b.WriteString("  session-top distill      Project digest (cwd + time; no model)\n")
 	return b.String()
 }
