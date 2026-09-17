@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/session-top/session-top/internal/app"
-	"github.com/session-top/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/cli"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := app.Run(os.Stdout, os.Args[1:], home, time.Now()); err != nil {
+	if err := cli.Run(os.Stdout, os.Args[1:], home, time.Now()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

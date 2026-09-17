@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/session-top/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 const whyWindow = 60 * time.Minute

@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/session-top/session-top/internal/usage"
+	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
 
 const (

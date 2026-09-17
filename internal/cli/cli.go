@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/session-top/session-top/internal/tui"
-	"github.com/session-top/session-top/internal/usage"
+	"github.com/jerryxff26-alt/session-top/internal/tui"
+	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
 
 // Load is the shipped discover → parse → analyze path.

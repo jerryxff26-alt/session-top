@@ -1,4 +1,4 @@
-module github.com/session-top/session-top
+module github.com/jerryxff26-alt/session-top
 
 go 1.23.0
 

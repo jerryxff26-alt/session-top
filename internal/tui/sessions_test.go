@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/session-top/session-top/internal/usage"
+	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
 
 func TestCleanSessionTitle(t *testing.T) {
