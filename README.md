@@ -47,6 +47,7 @@ internal/codex     discover and parse ~/.codex rollout JSONL
 internal/usage     OFFICIAL / OBSERVED / INFERRED analysis
 internal/tui       terminal rendering
 testdata           fixture Codex home for tests
+docs/distill.md    design: project-scoped distillation → skill draft
 ```
 
 ## Usage
@@ -91,6 +92,12 @@ Some Codex modes (historically `codex exec`) record `rate_limits: null`. OBSERVE
 Supports Codex CLI rollouts on macOS and Linux.
 
 Not in v0.1: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, JSON export, anomaly detection, multi-machine, historical trends.
+
+## Design
+
+Project-scoped distillation into a reviewable skill draft (not implemented in v0.0.1; autopsy/why stay 100% local):
+
+[docs/distill.md](docs/distill.md)
 
 ## License
 
