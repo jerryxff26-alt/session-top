@@ -143,6 +143,49 @@ func TestOverviewWhySessionsDetail(t *testing.T) {
 	}
 }
 
+func TestDistillHelpExitZero(t *testing.T) {
+	var buf bytes.Buffer
+	err := Run(&buf, []string{"distill", "--help"}, fixtureHome(t), time.Date(2026, 9, 16, 14, 40, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("distill --help: %v\n%s", err, buf.String())
+	}
+	out := buf.String()
+	for _, want := range []string{"session-top distill", "--cwd", "--since", "--from", "--to", "--json"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("distill --help missing %q\n%s", want, out)
+		}
+	}
+}
+
+func TestDistillProjectDotIsAbs(t *testing.T) {
+	now := time.Date(2026, 9, 16, 14, 40, 0, 0, time.UTC)
+	opts, _, err := parseDistillArgs([]string{"--project", "."}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.Abs(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = filepath.Clean(want)
+	if opts.Project != want {
+		t.Fatalf("project %q want abs %q", opts.Project, want)
+	}
+	if !filepath.IsAbs(opts.Project) {
+		t.Fatalf("project is not absolute: %q", opts.Project)
+	}
+}
+
+func TestDistillSameDayToIncludesFixture(t *testing.T) {
+	out := run(t, "distill", "--cwd", "/workspace/oauth-app", "--from", "2026-09-16", "--to", "2026-09-16")
+	if !strings.Contains(out, "Fix OAuth callback") {
+		t.Fatalf("same-day --to dropped in-window session:\n%s", out)
+	}
+	if strings.Contains(out, "outside-window 1") && !strings.Contains(out, "Fix OAuth callback") {
+		t.Fatal("oauth marked outside window")
+	}
+}
+
 func TestDistillShippedPath(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "")
 	out := run(t, "distill", "--cwd", "/workspace/oauth-app", "--from", "2026-09-16", "--to", "2026-09-17")
