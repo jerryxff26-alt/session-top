@@ -17,8 +17,10 @@ README           0.3%
 ```
 
 ```
-brew install session-top
-session-top
+git clone https://github.com/jerryxff26-alt/session-top.git
+cd session-top
+make
+./session-top
 ```
 
 session-top makes coding-agent usage observable and explainable.
@@ -36,7 +38,12 @@ make
 ./session-top
 ```
 
-Or `go build -o session-top ./cmd/session-top`. Homebrew (`brew install session-top`) is the intended distribution line; this repo is the source.
+Or:
+
+```
+go install github.com/jerryxff26-alt/session-top/cmd/session-top@latest
+session-top
+```
 
 ## Repository layout
 
