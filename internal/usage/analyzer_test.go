@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/session-top/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 func fixtureHome(t *testing.T) string {

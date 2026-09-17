@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/session-top/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 func buildAutopsy(s *SessionSummary) Autopsy {

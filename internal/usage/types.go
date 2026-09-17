@@ -3,7 +3,7 @@ package usage
 import (
 	"time"
 
-	"github.com/session-top/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 // Analysis is the full OFFICIAL / OBSERVED / INFERRED picture for the CLI.

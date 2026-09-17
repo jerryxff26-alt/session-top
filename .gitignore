@@ -3,8 +3,10 @@
 /codex-top
 /codex-top.exe
 /dist/
+/bin/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+coverage.out
 .DS_Store
 .idea/

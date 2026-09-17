@@ -32,10 +32,22 @@ From source (Go 1.23+):
 ```
 git clone https://github.com/jerryxff26-alt/session-top.git
 cd session-top
-go build -o session-top ./cmd/session-top
+make
+./session-top
 ```
 
-Homebrew (`brew install session-top`) is the intended distribution line; this repo is the source.
+Or `go build -o session-top ./cmd/session-top`. Homebrew (`brew install session-top`) is the intended distribution line; this repo is the source.
+
+## Repository layout
+
+```
+cmd/session-top    CLI entrypoint
+internal/cli       command dispatch (overview, why, sessions, watch)
+internal/codex     discover and parse ~/.codex rollout JSONL
+internal/usage     OFFICIAL / OBSERVED / INFERRED analysis
+internal/tui       terminal rendering
+testdata           fixture Codex home for tests
+```
 
 ## Usage
 

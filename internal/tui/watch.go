@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/session-top/session-top/internal/usage"
+	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
 
 const watchTick = 2 * time.Second

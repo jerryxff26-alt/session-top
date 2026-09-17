@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/session-top/session-top/internal/usage"
+	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
 
 func TestWatchViewFromAnalyzerSnapshot(t *testing.T) {
