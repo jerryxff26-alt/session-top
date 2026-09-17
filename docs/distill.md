@@ -76,7 +76,7 @@ The CLI can run alone. Inside Codex, the skill is the **orchestrator** and sessi
 3. Exec `session-top distill --cwd … --since …` (optional `--json`). Read **only the digest**.
 4. Never `cat` raw rollout JSONL. Never auto-install a generated skill.
 
-Shipped path: `.codex/skills/dont-let-your-token-die/SKILL.md` (also `.agents/skills/` so Codex scanners that walk `.agents/skills` find it).
+Shipped path: `skills/dont-let-your-token-die/SKILL.md` (copy into `.codex/skills`, `~/.codex/skills`, or `~/.grok/skills`).
 
 ### OSS review (borrow patterns, do not clone)
 

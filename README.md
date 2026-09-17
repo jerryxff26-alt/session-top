@@ -48,9 +48,7 @@ internal/usage                          OFFICIAL / OBSERVED / INFERRED analysis
 internal/tui                            terminal rendering
 testdata                                fixture Codex home for tests
 docs/distill.md                         distillation design
-.codex/skills/dont-let-your-token-die   Codex orchestrator skill
-.agents/skills/dont-let-your-token-die  same skill for .agents scanners
-.grok/skills/dont-let-your-token-die    Grok Build orchestrator skill
+skills/dont-let-your-token-die          orchestrator skill (copy into Codex/Grok)
 ```
 
 ## Usage
@@ -76,27 +74,23 @@ English name for “don't let your token die”. It is an **orchestrator**, not 
 
 ### Install
 
-Repo checkout (this tree already contains the files):
-
-| Agent | Path | Invoke |
-| --- | --- | --- |
-| Codex | `.codex/skills/dont-let-your-token-die/` | `$dont-let-your-token-die` |
-| Codex (`.agents` scan) | `.agents/skills/dont-let-your-token-die/` | `$dont-let-your-token-die` |
-| Grok Build | `.grok/skills/dont-let-your-token-die/` | `/dont-let-your-token-die` |
-
-User-wide Grok:
+The repo keeps **one** copy: `skills/dont-let-your-token-die/`. Copy it into the agent you use:
 
 ```
-mkdir -p ~/.grok/skills/dont-let-your-token-die
-cp .grok/skills/dont-let-your-token-die/SKILL.md ~/.grok/skills/dont-let-your-token-die/
+# Codex (this repo)
+mkdir -p .codex/skills
+cp -R skills/dont-let-your-token-die .codex/skills/
+
+# Codex (user-wide)
+mkdir -p ~/.codex/skills
+cp -R skills/dont-let-your-token-die ~/.codex/skills/
+
+# Grok Build (user-wide)
+mkdir -p ~/.grok/skills
+cp -R skills/dont-let-your-token-die ~/.grok/skills/
 ```
 
-User-wide Codex:
-
-```
-mkdir -p ~/.codex/skills/dont-let-your-token-die
-cp .codex/skills/dont-let-your-token-die/SKILL.md ~/.codex/skills/dont-let-your-token-die/
-```
+Invoke: Codex `$dont-let-your-token-die` · Grok `/dont-let-your-token-die`
 
 `session-top` must be on `PATH` (or `make` in this repo). Distill itself does not call a model.
 
