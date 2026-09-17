@@ -20,8 +20,7 @@ func repoRoot(t *testing.T) string {
 func TestDontLetYourTokenDieSkill(t *testing.T) {
 	root := repoRoot(t)
 	paths := []string{
-		filepath.Join(root, ".codex", "skills", "dont-let-your-token-die", "SKILL.md"),
-		filepath.Join(root, ".agents", "skills", "dont-let-your-token-die", "SKILL.md"),
+		filepath.Join(root, "skills", "dont-let-your-token-die", "SKILL.md"),
 	}
 	required := []string{
 		"name: dont-let-your-token-die",
