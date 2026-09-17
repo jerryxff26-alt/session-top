@@ -1,5 +1,8 @@
 # session-top
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+
 htop for your agent sessions.
 
 You know your usage dropped 12%.
@@ -16,16 +19,11 @@ Database         3.1%
 README           0.3%
 ```
 
-```
-git clone https://github.com/jerryxff26-alt/session-top.git
-cd session-top
-make
-./session-top
-```
-
 session-top makes coding-agent usage observable and explainable.
 
 v0.1 reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
+
+Quick start: see [Install](#install) below.
 
 ## Install
 
@@ -137,6 +135,8 @@ Some Codex modes (historically `codex exec`) record `rate_limits: null`. OBSERVE
 ## Scope (v0.1)
 
 Supports Codex CLI rollouts on macOS and Linux.
+
+Docs target **v0.1** (release tag may still show `v0.0.1`).
 
 Not in v0.1: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, JSON export, anomaly detection, multi-machine, historical trends.
 
