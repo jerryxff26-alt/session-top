@@ -41,13 +41,16 @@ Or `go build -o session-top ./cmd/session-top`. Homebrew (`brew install session-
 ## Repository layout
 
 ```
-cmd/session-top    CLI entrypoint
-internal/cli       command dispatch (overview, why, sessions, watch)
-internal/codex     discover and parse ~/.codex rollout JSONL
-internal/usage     OFFICIAL / OBSERVED / INFERRED analysis
-internal/tui       terminal rendering
-testdata           fixture Codex home for tests
-docs/distill.md    design: project-scoped distillation → skill draft
+cmd/session-top                         CLI entrypoint
+internal/cli                            command dispatch
+internal/codex                          discover and parse ~/.codex rollout JSONL
+internal/usage                          OFFICIAL / OBSERVED / INFERRED analysis
+internal/tui                            terminal rendering
+testdata                                fixture Codex home for tests
+docs/distill.md                         distillation design
+.codex/skills/dont-let-your-token-die   Codex orchestrator skill
+.agents/skills/dont-let-your-token-die  same skill for .agents scanners
+.grok/skills/dont-let-your-token-die    Grok Build orchestrator skill
 ```
 
 ## Usage
@@ -61,11 +64,49 @@ session-top watch        # live-refreshing view
 session-top distill      # project digest (cwd + time; no model)
 ```
 
-Codex orchestrator skill (depends on the CLI; clarify cwd / time / content first):
-
-`.codex/skills/dont-let-your-token-die/` — invoke `$dont-let-your-token-die`
-
 Codex data is read from `~/.codex/sessions/**/rollout-*.jsonl`. Override the Codex home directory with `CODEX_HOME`.
+
+## Skill: dont-let-your-token-die
+
+English name for “don't let your token die”. It is an **orchestrator**, not a dump of one project's chats.
+
+- **CLI is the engine** (`session-top distill`): 100% local, no model, bounded digest (goals, corrections, tools, observed mix, session ids).
+- **Skill is the conversation**: clarify **project (`cwd`)**, then **time range**, then **what to keep**, then run the CLI. Never `cat` raw rollout JSONL. Never auto-install a generated skill.
+- **Value**: a short skill a *later* session can load (do / don't, repo facts), so the next run spends fewer tokens — not a weekly recap.
+
+### Install
+
+Repo checkout (this tree already contains the files):
+
+| Agent | Path | Invoke |
+| --- | --- | --- |
+| Codex | `.codex/skills/dont-let-your-token-die/` | `$dont-let-your-token-die` |
+| Codex (`.agents` scan) | `.agents/skills/dont-let-your-token-die/` | `$dont-let-your-token-die` |
+| Grok Build | `.grok/skills/dont-let-your-token-die/` | `/dont-let-your-token-die` |
+
+User-wide Grok:
+
+```
+mkdir -p ~/.grok/skills/dont-let-your-token-die
+cp .grok/skills/dont-let-your-token-die/SKILL.md ~/.grok/skills/dont-let-your-token-die/
+```
+
+User-wide Codex:
+
+```
+mkdir -p ~/.codex/skills/dont-let-your-token-die
+cp .codex/skills/dont-let-your-token-die/SKILL.md ~/.codex/skills/dont-let-your-token-die/
+```
+
+`session-top` must be on `PATH` (or `make` in this repo). Distill itself does not call a model.
+
+### Example
+
+```
+session-top distill --cwd /path/to/project --from 2026-09-16 --to 2026-09-16
+```
+
+A product skill for that project is a **draft you copy by hand** after review. session-top will not write into `~/.codex/skills` or `~/.grok/skills` for you.
 
 ## What the numbers mean
 
@@ -100,9 +141,7 @@ Not in v0.1: other agents, Windows, Codex Desktop / VS Code / Cursor, roast repo
 
 ## Design
 
-Project-scoped distillation into a reviewable skill draft (not implemented in v0.0.1; autopsy/why stay 100% local):
-
-[docs/distill.md](docs/distill.md)
+Project-scoped distillation: [docs/distill.md](docs/distill.md). Extract CLI and orchestrator skill are in-tree; autopsy/why stay 100% local.
 
 ## License
 
