@@ -28,6 +28,9 @@ func Run(w io.Writer, args []string, home string, now time.Time) error {
 	case "help", "-h", "--help":
 		_, err := io.WriteString(w, Help())
 		return err
+	case "version", "--version":
+		_, err := fmt.Fprintf(w, "session-top %s\n", Version)
+		return err
 	case "watch":
 		return RunWatch(home, now)
 	}
@@ -80,13 +83,14 @@ func RunWatch(home string, _ time.Time) error {
 // Help is the CLI usage text.
 func Help() string {
 	var b strings.Builder
-	b.WriteString("session-top — htop for your agent sessions\n\n")
+	fmt.Fprintf(&b, "session-top %s — htop for your agent sessions\n\n", Version)
 	b.WriteString("Usage:\n")
 	b.WriteString("  session-top              Usage overview\n")
 	b.WriteString("  session-top why          Why did quota drop?\n")
 	b.WriteString("  session-top sessions     Rank sessions\n")
 	b.WriteString("  session-top session <id> Session timeline\n")
 	b.WriteString("  session-top watch        Live view\n")
-	b.WriteString("  session-top distill      Project digest (cwd + time; no model)\n")
+	b.WriteString("  session-top distill      Bounded project digest (local by default; optional --jev)\n")
+	b.WriteString("  session-top version      Print version\n")
 	return b.String()
 }

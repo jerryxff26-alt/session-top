@@ -151,6 +151,39 @@ func TestNoisePromptAndRuneTruncate(t *testing.T) {
 	}
 }
 
+func TestConversationContextIncludesAssistantAndToolEvidence(t *testing.T) {
+	body := strings.Join([]string{
+		`{"timestamp":"2026-09-19T01:00:00Z","type":"session_meta","payload":{"id":"ctx-1","cwd":"/workspace/demo"}}`,
+		`{"timestamp":"2026-09-19T01:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Please inspect the whole conversation, not just this prompt."}]}}`,
+		`{"timestamp":"2026-09-19T01:00:02Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"I will verify the implementation and the test output."}]}}`,
+		`{"timestamp":"2026-09-19T01:00:03Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","call_id":"call-1","arguments":"{\"cmd\":\"go test ./...\",\"api_key\":\"super-secret\"}"}}`,
+		`{"timestamp":"2026-09-19T01:00:04Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call-1","output":"Process exited with code 1\\nFinal output:\\nerror: assertion failed"}}`,
+	}, "\n") + "\n"
+	r, err := Parse("rollout-ctx-1.jsonl", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Conversation) != 3 {
+		t.Fatalf("conversation items=%d want 3: %+v", len(r.Conversation), r.Conversation)
+	}
+	if r.Conversation[0].Kind != "user" || !strings.Contains(r.Conversation[0].Text, "whole conversation") {
+		t.Fatalf("user context missing: %+v", r.Conversation[0])
+	}
+	if r.Conversation[1].Kind != "assistant" || !strings.Contains(r.Conversation[1].Text, "verify") {
+		t.Fatalf("assistant context missing: %+v", r.Conversation[1])
+	}
+	tool := r.Conversation[2]
+	if tool.Kind != "tool" || tool.Tool != "exec_command" || !tool.Failed || !strings.Contains(tool.Text, "go test ./...") || !strings.Contains(tool.Text, "assertion failed") {
+		t.Fatalf("tool evidence missing: %+v", tool)
+	}
+	if strings.Contains(tool.Text, "super-secret") || !strings.Contains(tool.Text, "<redacted>") {
+		t.Fatalf("secret was not redacted: %q", tool.Text)
+	}
+	if len(r.Prompts) != 1 || len([]rune(r.Prompts[0].Text)) <= 30 {
+		t.Fatalf("full prompt was not retained: %+v", r.Prompts)
+	}
+}
+
 func TestUnknownLineDoesNotCrash(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rollout-x.jsonl")

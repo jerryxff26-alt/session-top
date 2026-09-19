@@ -2,7 +2,7 @@
 
 session-top already answers *where quota and tokens went* (overview, sessions, autopsy, why). Distillation is a **side path** that answers a different question: *what should the next session in this repo already know, so it does not pay tuition again?*
 
-This document is the design and the **value goals**. The extract CLI (`session-top distill`) is model-free. The orchestrator skill **dont-let-your-token-die** depends on that CLI. Generating a *product* skill with a live LLM is still opt-in and out of the default core.
+This document is the design and the **value goals**. The extract CLI (`session-top distill`) is model-free by default. The orchestrator skill **dont-let-your-token-die** depends on that CLI. Jev ranking (`--jev`) and generating a *product* skill with a live LLM are explicit opt-ins outside the default core.
 
 ## Value goals
 
@@ -36,25 +36,40 @@ If those facts are in a loaded skill, the next session should spend less OBSERVE
 - Semantic summaries of the most expensive session as the primary artifact.
 - Claiming a quota % drop “was caused by” missing knowledge or by distillation topics.
 - Changing autopsy/why to require a network or an API key.
+- Permanently deleting sessions. Optional cleanup uses reversible Codex-native archive only.
 
 ## CLI vs skill split
 
 Two products, one data plane. Do not embed a chatbot in session-top.
 
-### CLI (session-top) — extract, no model required
+### CLI (session-top) — bounded extract; optional Jev ranker
 
 `session-top distill` only:
 
-1. Selects sessions by **project (`cwd`)** then **time range**.
+1. Selects sessions by **project (`cwd`)**, then **time range** and optional `--session ID`.
 2. Filters noise (continuation-only prompts, fork replays of a parent, empty goals).
-3. Emits **bounded extracts** per session and a **project digest** (merge/dedup).
-4. Writes local JSON/markdown extracts under a user-chosen path.
+3. Reconstructs bounded, redacted user messages, assistant conclusions, and tool evidence without reasoning or raw rollout dumps.
+4. Emits explicit `context_coverage` counts for included, omitted, truncated, and oversized items.
+5. Optionally calls Jev with `--jev` to rank reusable knowledge, verified evidence, and correction value. Jev never writes the skill prose.
+6. Optionally previews safe low-value archive candidates with `--archive-low`; only an explicit `--apply` invokes `codex archive <SESSION>`.
 
-This stage is 100% local, same as autopsy/why. It does not need an OpenAI API key and does not upload conversations.
+Without `--jev`, this stage is 100% local, same as autopsy/why, and needs no API key. With `--jev`, it sends only the bounded, redacted extract to TypeSafe using `JEV_API_KEY` (or `TYPESAFE_API_KEY`).
+
+### Low-value archive gate — dry-run by default
+
+`--archive-low` requires `--jev` and only annotates each session as `candidate` or `protected`; it does not change Codex state. A candidate must satisfy every condition:
+
+- `context_coverage.complete` is true and `review_required` is false;
+- session start is known and at least 7 days before the run;
+- session id is not the current `CODEX_THREAD_ID`;
+- Jev priority is `low` or `none`;
+- reusable-knowledge, verified-evidence, and correction-value scores are each below `0.35`.
+
+Only `--archive-low --apply` executes the native `codex archive <SESSION>` command, and only for candidates. Successful entries become `archived`; failures become `failed` and stop the run. Archive is reversible with `codex unarchive <SESSION>` and is not deletion. The system never calls `codex delete`.
 
 ### Skill draft — opt-in model, human review
 
-Only if the user opts in (`--write-skill` or piping the digest to a model they control):
+Only if the user asks for a draft after reviewing the digest/Jev ranking:
 
 1. The model sees the **project digest**, not raw rollouts.
 2. It writes a **SKILL.md draft** marked `model-written`.
@@ -73,8 +88,10 @@ The CLI can run alone. Inside Codex, the skill is the **orchestrator** and sessi
 
 1. Check `session-top` is on `PATH`.
 2. Clarify **project (`cwd`)**, then **time range**, then **content** (corrections / repo facts / don'ts) before extracting.
-3. Exec `session-top distill --cwd … --since …` (optional `--json`). Read **only the digest**.
-4. Never `cat` raw rollout JSONL. Never auto-install a generated skill.
+3. Exec `session-top distill --cwd … --since … --json`; add `--session …` for focused verification.
+4. If explicitly requested, add `--jev`; treat incomplete coverage or `priority: review` as mandatory review, not low value.
+5. If the user asks to clean up low-value history, run `--archive-low` first and show candidates. Add `--apply` only after explicit approval.
+6. Never `cat` raw rollout JSONL. Never auto-install a generated skill, never archive the current task, and never delete sessions.
 
 Shipped path: `skills/dont-let-your-token-die/SKILL.md` (copy into `.codex/skills`, `~/.codex/skills`, or `~/.grok/skills`).
 
@@ -99,6 +116,9 @@ session-top distill
 session-top distill --project .
 session-top distill --cwd /Users/me/git-repo/elc --since 7d
 session-top distill --cwd /Users/me/git-repo/elc --from 2026-09-01 --to 2026-09-17
+session-top distill --cwd /Users/me/git-repo/elc --session <id> --jev --json
+session-top distill --cwd /Users/me/git-repo/elc --since 30d --jev --archive-low --json
+session-top distill --cwd /Users/me/git-repo/elc --since 30d --jev --archive-low --apply --json
 ```
 
 Rules:
@@ -129,16 +149,17 @@ Each in-scope session becomes one extract object with hard caps. Overflow is tru
 | `cwd` | `session_meta.cwd` | full |
 | `parent_id` | `forked_from_id` if present | full |
 | `goal` | first non-noise user prompt | ~500 chars |
-| `corrections` | later user prompts that constrain work (“不要…”, “谁让你…”, “don't…”) | max 8, ~240 chars each |
+| `corrections` | later user prompts that constrain or correct work | max 8, ~600 chars each |
 | `tools` | function_call names + counts | top 8 names |
-| `files` | paths from tool args / patch ends, basenames preferred | top 12 |
+| `context` | bounded user messages, assistant conclusions, and tool call/result evidence | max 9 items; total ~3200 runes; messages/tools receive smaller per-item caps |
+| `context_coverage` | source/included/omitted/truncated/oversized counts and completeness | numbers/boolean |
 | `observed` | input / cached share of input / output / reasoning / turns / compactions | numbers only |
 | `continuation_follow_ups` | keep-going / 继续 style prompts after the first | count |
 | `title` | same title rules as `sessions` | ~80 chars |
 
-Not included: full assistant text, full tool stdout, compacted payloads, environment_context dumps.
+Not included: reasoning, full assistant transcripts, full tool stdout, compacted payloads, environment/context wrappers, or secrets matched by the redactor.
 
-Per-session extract budget: **target ≤ 2k tokens, hard stop 4k**. If still over: drop files, then tools, then extra corrections; never expand to the rollout file.
+Per-session Jev input budget: **target ≤ 2k tokens, hard stop 4k**. The implementation preserves user/assistant turns first, failed tools next, then a small first/latest tool sample. If still over, reduce tool evidence; never expand to the rollout file.
 
 ## Project digest, merge, shard
 
@@ -192,6 +213,9 @@ bounded per-session extracts     (local, capped)
         │
         ▼
 project digest (dedup, corrections, hot files)
+        │  optional --jev → structured value/evidence/correction ranking
+        │  optional --archive-low → candidate/protected preview
+        │  explicit --apply → codex archive (reversible, never delete)
         │  still large → shard by week/topic, then compose
         ▼
 optional opt-in model → SKILL.md.draft (model-written, cited ids)
@@ -208,25 +232,30 @@ human review → enable by hand or throw away
 - **Garbage in**: “继续” and forks dominate real traces. Filter before extract or the skill will teach the agent to ramble.
 - **Wrong project mix**: global distill would blend unrelated repos. cwd default prevents that.
 - **Stale skills**: a draft is a snapshot; it is not live autopsy. Version and date the skill; users re-run distill when the project changes.
-- **Privacy**: extracts stay local; opt-in model is the user's model/CLI, not session-top telemetry.
+- **Privacy**: default extracts stay local. `--jev` sends bounded, redacted excerpts to TypeSafe; users should still avoid selecting sessions whose remaining excerpts are too sensitive to transmit.
+- **False low-value decisions**: incomplete or truncated context can hide value. Coverage is explicit, and incomplete sessions are forced to review rather than trusted as low/no value.
+- **Over-eager cleanup**: low priority alone is insufficient. Preview is the default; recent/current/review-required sessions are protected; only explicit `--apply` archives; `codex unarchive` restores mistakes.
 
 ## Key decisions
 
 1. **Value = future loaded skill, not a recap** — otherwise distill competes with `why` and burns tokens for a document nobody uses.
-2. **CLI extract is model-free; generate is opt-in** — preserves 100% local core (autopsy/why).
+2. **CLI extract is model-free by default; Jev rank and skill generation are opt-in** — preserves the 100% local core (autopsy/why and plain distill).
 3. **cwd / project is the default dimension; time range is secondary** — matches how people actually run sessions.
 4. **Bounded extracts + shard, never raw JSONL** — context overflow is an extract bug, not a reason to buy a bigger window.
 5. **Human review, cited session ids, no auto-enable** — skills change future agent behavior; silent install is unsafe.
 6. **Do not mix unmatched cwd into the project skill** — including unknown cwd.
+7. **Jev ranks; a stronger model composes** — structured value judgments do not replace evidence-backed skill drafting.
+8. **Archive is gated, preview-first, explicit, and reversible** — `--archive-low` proposes; `--apply` executes native archive; deletion is out of scope.
 
-## Open questions (implementation later, not blockers for this design)
+## Open questions
 
-- Which opt-in mechanism (flag vs user-run editor vs piping digest to `codex exec`) — all are explicit; none are default-on.
 - Exact similarity threshold for merging goals — implementation detail; digest must still cite ids.
+- Whether future ranking should batch multiple small sessions into one Jev request without weakening per-session traceability.
 
 ## PR Plan
 
-1. **Extract CLI (this change)** — `session-top distill` writes a bounded digest (no model). Tests on testdata `--cwd /workspace/oauth-app`.
-2. **Orchestrator skill (this change)** — `dont-let-your-token-die` depends on the CLI; stepwise cwd/time/content; no raw JSONL; no auto-install.
-3. **Opt-in draft writer** — later; skipped unless the user asks the skill to draft after seeing the digest.
-4. **Docs / README** — this file + README usage line.
+1. **Extract CLI** — implemented: bounded user/assistant/tool context, coverage, session targeting, and local JSON/text output.
+2. **Jev ranker** — implemented as explicit `--jev`, capped at 10 matched sessions per run.
+3. **Safe archive path** — implemented: strict Jev/coverage/age/current-session gate, dry-run decisions, and explicit native `--apply`.
+4. **Orchestrator skill** — implemented: cwd/time/session scope, coverage review, preview-first archive, no raw JSONL, no auto-install.
+5. **Opt-in draft writer** — remains conversational; the skill drafts only after the user asks and reviews the evidence.

@@ -54,6 +54,8 @@ func summarize(r *codex.Rollout, snaps []codex.QuotaSnapshot) SessionSummary {
 		Compactions:           len(r.Compactions),
 		ContinuationFollowUps: countContinuations(r.Prompts),
 		TopTools:              tallyTools(r.Tools),
+		Conversation:          append([]codex.ConversationItem(nil), r.Conversation...),
+		SkippedContextItems:   r.SkippedConversationItems,
 	}
 	if s.Turns == 0 {
 		s.Turns = len(r.Usage)
@@ -97,7 +99,7 @@ func summarize(r *codex.Rollout, snaps []codex.QuotaSnapshot) SessionSummary {
 func titleFor(r *codex.Rollout) string {
 	for _, p := range r.Prompts {
 		if t := strings.TrimSpace(p.Text); t != "" {
-			return t
+			return shortTitle(t)
 		}
 	}
 	if r.Session.CWD != "" {
@@ -108,6 +110,19 @@ func titleFor(r *codex.Rollout) string {
 		return id[:8]
 	}
 	return id
+}
+
+func shortTitle(text string) string {
+	text = strings.TrimSpace(text)
+	if i := strings.IndexByte(text, '\n'); i >= 0 {
+		text = strings.TrimSpace(text[:i])
+	}
+	text = strings.Join(strings.Fields(text), " ")
+	r := []rune(text)
+	if len(r) <= 72 {
+		return text
+	}
+	return string(r[:71]) + "…"
 }
 
 func buildTimeline(r *codex.Rollout, snaps []codex.QuotaSnapshot) []TimelineItem {

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 func TestDistillProjectFilterAndBounds(t *testing.T) {
@@ -69,5 +71,45 @@ func TestCwdInProject(t *testing.T) {
 	}
 	if cwdInProject("/workspace/oauth-app", "/workspace/oauth") {
 		t.Fatal("prefix sibling oauth vs oauth-app")
+	}
+}
+
+func TestDistillContextKeepsOpeningAndClosingEvidence(t *testing.T) {
+	items := make([]codex.ConversationItem, 20)
+	for i := range items {
+		items[i] = codex.ConversationItem{Kind: "tool", Tool: "exec_command", Text: "step"}
+	}
+	items[0] = codex.ConversationItem{Kind: "user", Text: "Initial multi-turn request"}
+	items[19] = codex.ConversationItem{Kind: "assistant", Text: "Final verified conclusion"}
+	context, coverage := distillContext(items, 1)
+	if len(context) != maxContextItems {
+		t.Fatalf("context=%d want %d", len(context), maxContextItems)
+	}
+	if context[0].Kind != "user" || !strings.Contains(context[0].Text, "Initial") {
+		t.Fatalf("opening request missing: %+v", context[0])
+	}
+	if last := context[len(context)-1]; last.Kind != "assistant" || !strings.Contains(last.Text, "verified") {
+		t.Fatalf("closing answer missing: %+v", last)
+	}
+	if coverage.OmittedItems != 11 || coverage.OversizedItems != 1 || coverage.Complete {
+		t.Fatalf("coverage=%+v", coverage)
+	}
+}
+
+func TestDistillSessionFilter(t *testing.T) {
+	a := &Analysis{Sessions: []SessionSummary{
+		{ID: "01970000-0000-7000-8000-000000000001", CWD: "/workspace/oauth-app", Title: "keep"},
+		{ID: "01970000-0000-7000-8000-000000000002", CWD: "/workspace/oauth-app", Title: "drop"},
+	}}
+	d := Distill(a, DistillOpts{Project: "/workspace/oauth-app", SessionID: "0001"})
+	if len(d.Sessions) != 1 || d.Sessions[0].Goal != "keep" || d.DroppedOtherSession != 1 {
+		t.Fatalf("filtered digest: %+v", d)
+	}
+}
+
+func TestEmptyDistillContextRequiresReview(t *testing.T) {
+	context, coverage := distillContext(nil, 0)
+	if len(context) != 0 || coverage.Complete {
+		t.Fatalf("context=%+v coverage=%+v", context, coverage)
 	}
 }

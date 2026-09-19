@@ -96,6 +96,19 @@ type ToolCall struct {
 	Name      string
 }
 
+// ConversationItem is a bounded, redacted piece of user/assistant/tool context.
+// It deliberately excludes reasoning and raw rollout payloads.
+type ConversationItem struct {
+	Time      time.Time
+	TurnID    string
+	Kind      string // user, assistant, tool
+	Text      string
+	Tool      string
+	CallID    string
+	Failed    bool
+	Truncated bool
+}
+
 // Compaction is a compacted event (payload may have been skipped if oversized).
 type Compaction struct {
 	SessionID      string
@@ -114,13 +127,15 @@ type Prompt struct {
 
 // Rollout is one parsed rollout-*.jsonl file.
 type Rollout struct {
-	Session     Session
-	Usage       []UsageEvent
-	Quotas      []QuotaSnapshot
-	Turns       []TurnStart
-	Tools       []ToolCall
-	Compactions []Compaction
-	Prompts     []Prompt
+	Session                  Session
+	Usage                    []UsageEvent
+	Quotas                   []QuotaSnapshot
+	Turns                    []TurnStart
+	Tools                    []ToolCall
+	Compactions              []Compaction
+	Prompts                  []Prompt
+	Conversation             []ConversationItem
+	SkippedConversationItems int
 }
 
 func (r *Rollout) EndedAt() time.Time {
@@ -146,6 +161,9 @@ func (r *Rollout) EndedAt() time.Time {
 		bump(e.Time)
 	}
 	for _, e := range r.Prompts {
+		bump(e.Time)
+	}
+	for _, e := range r.Conversation {
 		bump(e.Time)
 	}
 	return end

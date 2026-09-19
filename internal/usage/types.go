@@ -71,6 +71,8 @@ type SessionSummary struct {
 	ContinuationFollowUps int
 	TopTools              []ToolCount
 	Corrections           []string
+	Conversation          []codex.ConversationItem
+	SkippedContextItems   int
 	Autopsy               Autopsy
 }
 
