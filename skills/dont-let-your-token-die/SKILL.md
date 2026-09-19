@@ -1,69 +1,104 @@
 ---
 name: dont-let-your-token-die
-description: Use when the user wants to stop wasting Codex tokens, distill past sessions into reusable project know-how, or turn local session-top digests into a skill draft. Not for live quota percentages or official billing.
+description: Use when the user wants to stop wasting Codex tokens, rank past project sessions with Jev, or distill bounded Codex history into reusable repo guidance. Not for live quota percentages or automatic deletion.
 ---
 
 # Don't let your token die
 
-Orchestrate **project-scoped distillation**. `session-top` is a **dependency** (the engine). This skill only clarifies scope, runs the CLI, and helps draft a **future** skill. It does not recap chats for their own sake.
+Turn project-scoped Codex history into a short skill a later session can load. `session-top` is the required extraction dependency; this skill orchestrates scope, optional Jev ranking, drafting, and review.
 
-Success: a short skill a later session can load (do / don't, repo facts, corrections) so the next run spends fewer tokens. Not a weekly summary.
+Success is reusable **do / don't / repo facts / verified procedures**, not a weekly chat recap.
 
-## Hard rules
+## Invariants
 
-1. Treat **session-top as a dependency**. Do not re-parse `~/.codex/sessions/**/rollout-*.jsonl` yourself.
-2. **Clarify project (`cwd`), then time range, then content** with the user **before** extracting. Default project is the current working directory.
-3. Never feed **raw rollout** JSONL (no `cat`, no dumping compacted payloads) into context. Read only `session-top distill` digest output.
-4. Do **not auto-install** a generated skill. Present a draft; write a file only after the user names a destination.
-5. Do not claim a quota percent drop was caused by missing knowledge. Distill is OBSERVED know-how, not OFFICIAL quota math.
-6. `session-top`, `why`, and autopsy stay model-free. This skill may use a model only to turn an already-bounded digest into a SKILL.md draft after the user opts in.
+1. Scope by **project (`cwd`) first**, then **time range** or `--session ID`. Never mix unmatched projects.
+2. Never read or paste a raw rollout JSONL into model context. Use only the bounded, redacted `session-top distill` digest.
+3. The local digest must include user messages, assistant conclusions, tool evidence, and `context_coverage`. If coverage is incomplete, do not treat low value as proven.
+4. `--jev` is explicit opt-in. It sends only bounded, redacted digest context to TypeSafe; default distill stays local and model-free.
+5. Jev ranks sessions; it does not write the final skill. Use its separate reusable-knowledge, verified-evidence, and correction-value judgments as signals.
+6. A low Jev label alone does **not** authorize archive or deletion. Archive only through the complete safety gate below, and only after explicit `--apply`.
+7. Do **not auto-install** a generated skill. Draft first; write only after the user chooses a destination. Never overwrite without approval.
+8. Archive is reversible (`codex unarchive <SESSION>`); deletion is never part of this skill.
 
-## Check the CLI
+## Check the dependency
 
 ```bash
 session-top distill --help
 ```
 
-If `session-top` is missing, tell the user to build it (`go build -o session-top ./cmd/session-top` from the session-top repo, or `make`) and stop. Do not invent a second parser.
+If unavailable, tell the user to build it from this repo (`make` or `go build -o session-top ./cmd/session-top`) and stop. Do not invent another rollout parser.
 
 ## Workflow
 
-### 1. Clarify (required)
+### 1. Resolve scope
 
-Ask anything not already stated:
+Use what the user already supplied; ask only for missing scope:
 
-- **Project (`cwd`)**: current repo vs a path? Default: `.` resolved to an absolute path.
-- **Time range**: `--since 7d` or `--from YYYY-MM-DD --to YYYY-MM-DD`. Time is secondary to project.
-- **Content**: corrections / repo facts / things not to do again.
+- project path, defaulting to current `cwd`;
+- time range (`--since`, `--from` / `--to`) or an exact/prefix/suffix session id;
+- desired knowledge: corrections, repo facts, verified procedures, or all three.
 
-Do not run distill against all projects. Sessions whose cwd does not match must not mix into this project's digest.
-
-### 2. Extract (CLI only)
+### 2. Extract locally first
 
 ```bash
-session-top distill --cwd <project> --since 7d
-session-top distill --cwd <project> --from 2026-09-01 --to 2026-09-17 --json
+session-top distill --cwd <project> --since 7d --json
+session-top distill --cwd <project> --session <id> --json
 ```
 
-Use `--json` when you will draft a skill so you can cite `session_id` values. Summarize the digest for the user (goals, tools, mix, continuation counts, parent/fork ids). Ask what to keep.
+Inspect every candidate's:
 
-### 3. Draft (only if asked)
+- `context`: bounded user / assistant / tool evidence;
+- `context_coverage`: included, omitted, truncated, oversized, complete;
+- corrections, tools, goal, and session id.
 
-If the user wants a reusable skill, write a **SKILL.md draft** in the response first:
+Do not claim a conclusion was verified unless the context contains corresponding command/test evidence.
 
-- `name` hyphen-case for the **project** skill (not `dont-let-your-token-die`)
-- `description` with triggers for that repo
-- do / don't / repo facts
-- cited session ids from the digest
-- `model-written: true` in the body if a model produced the prose
+### 3. Rank with Jev only when requested
 
-Keep it short. No transcript paste.
+Requires `JEV_API_KEY` (or compatible `TYPESAFE_API_KEY`):
 
-### 4. Install (never default)
+```bash
+session-top distill --cwd <project> --session <id> --jev --json
+session-top distill --cwd <project> --since 2d --jev --json
+```
 
-Offer destinations; wait:
+A Jev run is capped at 10 matched sessions; narrow the scope instead of bulk-uploading history. Treat `priority: review` or `review_required: true` as a mandatory manual/strong-model review. Never discard a session solely because Jev says `low` or `none`.
 
-- Repo: `.codex/skills/<project-skill>/SKILL.md`
-- User: `~/.codex/skills/<project-skill>/SKILL.md`
+### 4. Optionally archive proven low-value sessions
 
-Do not copy until they confirm. Do not overwrite without asking.
+Preview candidates first; this command does not change Codex state:
+
+```bash
+session-top distill --cwd <project> --since 30d --jev --archive-low --json
+```
+
+A session is a candidate only when every gate passes: context is complete, review is not required, it is at least 7 days old, it is not the current `CODEX_THREAD_ID`, Jev priority is `low` or `none`, and reusable-knowledge, verified-evidence, and correction-value scores are all below `0.35`. Everything else is marked `protected`.
+
+After reviewing the candidate list, execute Codex-native archive only when the user explicitly asks:
+
+```bash
+session-top distill --cwd <project> --since 30d --jev --archive-low --apply --json
+```
+
+`--apply` archives candidates with `codex archive <SESSION>`. Archive is reversible with `codex unarchive <SESSION>` and is not deletion. Never add `--apply` implicitly, never archive the current task, and never use `codex delete`.
+
+### 5. Draft the reusable project skill
+
+Use only supported claims. The draft should contain:
+
+- YAML front matter with a project-specific hyphen-case `name`, discriminating `description`, and `version`;
+- `model-written: true`, source `cwd`, and digest time range;
+- concise triggers, do, don't, repo facts, and verified procedures;
+- cited session ids next to material claims;
+- uncertainties or incomplete-context warnings.
+
+Aim below 2k tokens. Do not paste transcript excerpts unless a short quote is necessary to explain a correction.
+
+### 6. Human review and optional install
+
+Present the draft in the response. If the user chooses to write it, offer:
+
+- repo-local: `.codex/skills/<project-skill>/SKILL.md`
+- user-wide: `~/.codex/skills/<project-skill>/SKILL.md`
+
+Do not auto-install or delete anything. Archive only through the preview-first flow above and only with explicit `--apply`.

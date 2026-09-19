@@ -16,8 +16,16 @@ import (
 const MaxJSONLine = 64 * 1024
 
 var (
-	typeFieldRe = regexp.MustCompile(`"type"\s*:\s*"([^"]+)"`)
-	tsFieldRe   = regexp.MustCompile(`"timestamp"\s*:\s*"([^"]+)"`)
+	typeFieldRe       = regexp.MustCompile(`"type"\s*:\s*"([^"]+)"`)
+	tsFieldRe         = regexp.MustCompile(`"timestamp"\s*:\s*"([^"]+)"`)
+	bearerSecretRe    = regexp.MustCompile(`(?i)(authorization\s*:\s*bearer\s+)[^\s"']+`)
+	namedSecretRe     = regexp.MustCompile(`(?i)((?:api[_-]?key|password|secret)\s*[=:]\s*)[^\s,"'}]+`)
+	jsonSecretFieldRe = regexp.MustCompile(`(?i)("(?:api[_-]?key|authorization|password|secret)"\s*:\s*")[^"]*(")`)
+)
+
+const (
+	maxConversationRunes = 2400
+	maxToolEvidenceRunes = 600
 )
 
 type envelope struct {
@@ -112,6 +120,7 @@ type responseItemPayload struct {
 	Content   json.RawMessage `json:"content"`
 	Arguments string          `json:"arguments"`
 	CallID    string          `json:"call_id"`
+	Output    json.RawMessage `json:"output"`
 }
 
 type turnContextPayload struct {
@@ -137,6 +146,7 @@ type parseState struct {
 	prevTotal *TokenUsage
 	prevLast  *TokenUsage
 	haveTotal bool
+	toolItems map[string]int
 }
 
 // ParseFile reads a Codex rollout JSONL file. Unknown types and oversized
@@ -153,7 +163,10 @@ func ParseFile(path string) (*Rollout, error) {
 // Parse reads a rollout from r.
 func Parse(path string, r io.Reader) (*Rollout, error) {
 	br := bufio.NewReaderSize(r, 256*1024)
-	st := &parseState{ro: &Rollout{Session: Session{File: path}}}
+	st := &parseState{
+		ro:        &Rollout{Session: Session{File: path}},
+		toolItems: map[string]int{},
+	}
 	for {
 		line, truncated, err := readLineLimited(br, MaxJSONLine)
 		if err == io.EOF {
@@ -187,6 +200,8 @@ func (st *parseState) ingestTruncated(prefix []byte) {
 			Time:           ts,
 			SkippedPayload: true,
 		})
+	case "response_item":
+		st.ro.SkippedConversationItems++
 	default:
 		// unknown / oversized non-compaction: ignore
 	}
@@ -254,12 +269,12 @@ func (st *parseState) ingestEventMsg(ts time.Time, raw json.RawMessage) {
 		})
 	case "user_message":
 		if text := strings.TrimSpace(p.Message); text != "" && !isNoisePrompt(text) {
-			st.ro.Prompts = append(st.ro.Prompts, Prompt{
-				SessionID: st.ro.Session.ID,
-				Time:      ts,
-				TurnID:    st.turnID,
-				Text:      firstLine(text),
-			})
+			st.appendPrompt(ts, text)
+			st.appendConversation(ts, "user", "", "", text)
+		}
+	case "agent_message":
+		if text := strings.TrimSpace(p.Message); text != "" {
+			st.appendConversation(ts, "assistant", "", "", text)
 		}
 	}
 }
@@ -341,21 +356,93 @@ func (st *parseState) ingestResponseItem(ts time.Time, raw json.RawMessage) {
 			TurnID:    st.turnID,
 			Name:      name,
 		})
+		text := strings.TrimSpace(p.Arguments)
+		idx := st.appendConversation(ts, "tool", name, p.CallID, text)
+		if p.CallID != "" && idx >= 0 {
+			st.toolItems[p.CallID] = idx
+		}
+	case "function_call_output", "custom_tool_call_output":
+		text := extractOutput(p.Output)
+		failed := toolOutputFailed(text)
+		if idx, ok := st.toolItems[p.CallID]; ok && idx >= 0 && idx < len(st.ro.Conversation) {
+			item := &st.ro.Conversation[idx]
+			result, truncated := boundedContext(text, maxToolEvidenceRunes)
+			if result != "" {
+				if item.Text != "" {
+					item.Text += "\nresult: " + result
+				} else {
+					item.Text = "result: " + result
+				}
+			}
+			item.Failed = failed
+			item.Truncated = item.Truncated || truncated
+			delete(st.toolItems, p.CallID)
+			return
+		}
+		idx := st.appendConversation(ts, "tool", "tool_result", p.CallID, text)
+		if idx >= 0 {
+			st.ro.Conversation[idx].Failed = failed
+		}
 	case "message":
-		if !strings.EqualFold(p.Role, "user") {
+		role := strings.ToLower(strings.TrimSpace(p.Role))
+		if role != "user" && role != "assistant" {
 			return
 		}
 		text := extractText(p.Content)
-		if text == "" || isNoisePrompt(text) {
+		if text == "" || (role == "user" && isNoisePrompt(text)) {
 			return
 		}
-		st.ro.Prompts = append(st.ro.Prompts, Prompt{
-			SessionID: st.ro.Session.ID,
-			Time:      ts,
-			TurnID:    st.turnID,
-			Text:      firstLine(text),
-		})
+		if role == "user" {
+			st.appendPrompt(ts, text)
+		}
+		st.appendConversation(ts, role, "", "", text)
 	}
+}
+
+func (st *parseState) appendPrompt(ts time.Time, text string) {
+	text = promptText(text)
+	if text == "" {
+		return
+	}
+	if n := len(st.ro.Prompts); n > 0 {
+		last := st.ro.Prompts[n-1]
+		if last.TurnID == st.turnID && last.Text == text {
+			return
+		}
+	}
+	st.ro.Prompts = append(st.ro.Prompts, Prompt{
+		SessionID: st.ro.Session.ID,
+		Time:      ts,
+		TurnID:    st.turnID,
+		Text:      text,
+	})
+}
+
+func (st *parseState) appendConversation(ts time.Time, kind, tool, callID, text string) int {
+	limit := maxConversationRunes
+	if kind == "tool" {
+		limit = maxToolEvidenceRunes
+	}
+	text, truncated := boundedContext(text, limit)
+	if kind != "tool" && text == "" {
+		return -1
+	}
+	if n := len(st.ro.Conversation); n > 0 {
+		last := st.ro.Conversation[n-1]
+		if last.TurnID == st.turnID && last.Kind == kind && last.Tool == tool && last.Text == text {
+			return n - 1
+		}
+	}
+	st.ro.Conversation = append(st.ro.Conversation, ConversationItem{
+		Time:      ts,
+		TurnID:    st.turnID,
+		Kind:      kind,
+		Text:      text,
+		Tool:      tool,
+		CallID:    callID,
+		Truncated: truncated,
+	})
+	return len(st.ro.Conversation) - 1
 }
 
 func (st *parseState) ingestTurnContext(ts time.Time, raw json.RawMessage) {
@@ -494,6 +581,52 @@ func extractText(raw json.RawMessage) string {
 		return strings.TrimSpace(s)
 	}
 	return ""
+}
+
+func extractOutput(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return strings.TrimSpace(s)
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, raw); err == nil {
+		return strings.TrimSpace(compact.String())
+	}
+	return strings.TrimSpace(string(raw))
+}
+
+func boundedContext(text string, limit int) (string, bool) {
+	text = strings.TrimSpace(text)
+	text = bearerSecretRe.ReplaceAllString(text, `${1}<redacted>`)
+	text = namedSecretRe.ReplaceAllString(text, `${1}<redacted>`)
+	text = jsonSecretFieldRe.ReplaceAllString(text, `${1}<redacted>${2}`)
+	if text == "" {
+		return "", false
+	}
+	r := []rune(text)
+	if limit <= 1 || len(r) <= limit {
+		return text, false
+	}
+	return string(r[:limit-1]) + "…", true
+}
+
+func promptText(text string) string {
+	text = strings.Join(strings.Fields(strings.TrimSpace(text)), " ")
+	return truncateRunes(text, 600)
+}
+
+func toolOutputFailed(text string) bool {
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "process exited with code 0") || strings.Contains(lower, `"status":"completed"`) {
+		return false
+	}
+	return strings.Contains(lower, "process exited with code ") ||
+		strings.Contains(lower, `"status":"failed"`) ||
+		strings.Contains(lower, "traceback (most recent call last)") ||
+		strings.Contains(lower, "error:")
 }
 
 func isNoisePrompt(text string) bool {

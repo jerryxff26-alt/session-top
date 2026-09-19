@@ -28,6 +28,13 @@ func TestDistillDesignContract(t *testing.T) {
 		"--cwd",
 		"model-written",
 		"session ids",
+		"--jev",
+		"context_coverage",
+		"JEV_API_KEY",
+		"--archive-low",
+		"--apply",
+		"codex unarchive",
+		"not deletion",
 	}
 	lower := strings.ToLower(distillDesign)
 	for _, want := range required {

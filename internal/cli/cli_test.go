@@ -2,12 +2,17 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jerryxff26-alt/session-top/internal/archive"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
+	"github.com/jerryxff26-alt/session-top/internal/jev"
 	"github.com/jerryxff26-alt/session-top/internal/tui"
 	"github.com/jerryxff26-alt/session-top/internal/usage"
 )
@@ -29,6 +34,21 @@ func run(t *testing.T, args ...string) string {
 		t.Fatalf("run %v: %v\n%s", args, err, buf.String())
 	}
 	return buf.String()
+}
+
+func TestVersion(t *testing.T) {
+	out := run(t, "--version")
+	if !strings.Contains(out, "session-top") || !strings.Contains(out, Version) {
+		t.Fatalf("--version: %q", out)
+	}
+	out = run(t, "version")
+	if !strings.Contains(out, Version) {
+		t.Fatalf("version: %q", out)
+	}
+	help := run(t, "--help")
+	if !strings.Contains(help, Version) {
+		t.Fatalf("help missing version: %q", help)
+	}
 }
 
 func TestOverviewWhySessionsDetail(t *testing.T) {
@@ -150,7 +170,7 @@ func TestDistillHelpExitZero(t *testing.T) {
 		t.Fatalf("distill --help: %v\n%s", err, buf.String())
 	}
 	out := buf.String()
-	for _, want := range []string{"session-top distill", "--cwd", "--since", "--from", "--to", "--json"} {
+	for _, want := range []string{"session-top distill", "--cwd", "--session", "--since", "--from", "--to", "--jev", "--archive-low", "--apply", "--json"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("distill --help missing %q\n%s", want, out)
 		}
@@ -159,7 +179,7 @@ func TestDistillHelpExitZero(t *testing.T) {
 
 func TestDistillProjectDotIsAbs(t *testing.T) {
 	now := time.Date(2026, 9, 16, 14, 40, 0, 0, time.UTC)
-	opts, _, err := parseDistillArgs([]string{"--project", "."}, now)
+	runOpts, err := parseDistillArgs([]string{"--project", "."}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,11 +188,91 @@ func TestDistillProjectDotIsAbs(t *testing.T) {
 		t.Fatal(err)
 	}
 	want = filepath.Clean(want)
-	if opts.Project != want {
-		t.Fatalf("project %q want abs %q", opts.Project, want)
+	if runOpts.Selection.Project != want {
+		t.Fatalf("project %q want abs %q", runOpts.Selection.Project, want)
 	}
-	if !filepath.IsAbs(opts.Project) {
-		t.Fatalf("project is not absolute: %q", opts.Project)
+	if !filepath.IsAbs(runOpts.Selection.Project) {
+		t.Fatalf("project is not absolute: %q", runOpts.Selection.Project)
+	}
+}
+
+func TestParseDistillJevAndSession(t *testing.T) {
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+	runOpts, err := parseDistillArgs([]string{"--session", "0001", "--jev", "--json"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runOpts.Selection.SessionID != "0001" || !runOpts.AsJSON || !runOpts.UseJev {
+		t.Fatalf("opts=%+v", runOpts)
+	}
+}
+
+func TestParseDistillArchiveFlagDependencies(t *testing.T) {
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+	if _, err := parseDistillArgs([]string{"--archive-low"}, now); err == nil || !strings.Contains(err.Error(), "requires --jev") {
+		t.Fatalf("--archive-low error=%v", err)
+	}
+	if _, err := parseDistillArgs([]string{"--apply"}, now); err == nil || !strings.Contains(err.Error(), "requires --archive-low") {
+		t.Fatalf("--apply error=%v", err)
+	}
+	runOpts, err := parseDistillArgs([]string{"--jev", "--archive-low", "--apply"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !runOpts.UseJev || !runOpts.ArchiveLow || !runOpts.Apply {
+		t.Fatalf("opts=%+v", runOpts)
+	}
+}
+
+type fakeJevAssessor struct {
+	state any
+}
+
+func (f *fakeJevAssessor) Assess(_ context.Context, state any) (jev.Assessment, error) {
+	f.state = state
+	return jev.Assessment{
+		Model:             "jev-latest",
+		DistillPriority:   jev.ChoiceAnswer{Choice: "high"},
+		PrimaryValue:      jev.ChoiceAnswer{Choice: "correction_value"},
+		ReusableKnowledge: jev.NoulAnswer{Noul: 0.8},
+		VerifiedEvidence:  jev.NoulAnswer{Noul: 0.7},
+		CorrectionValue:   jev.NoulAnswer{Noul: 0.9},
+		Usage:             jev.Usage{InputTokens: 123},
+	}, nil
+}
+
+func TestAssessWithJevAnnotatesDigestAndRequiresReviewForIncompleteContext(t *testing.T) {
+	d := usage.DistillDigest{Sessions: []usage.DistillExtract{{
+		SessionID: "session-1",
+		CWD:       "/workspace/demo",
+		Goal:      "Fix parser",
+		Context: []usage.DistillContextItem{
+			{Kind: "user", Text: "read the whole conversation"},
+			{Kind: "assistant", Text: "implemented and tested"},
+		},
+		ContextCoverage: usage.DistillContextCoverage{SourceItems: 3, IncludedItems: 2, OmittedItems: 1},
+	}}}
+	fake := &fakeJevAssessor{}
+	if err := assessWithJev(context.Background(), fake, &d); err != nil {
+		t.Fatal(err)
+	}
+	got := d.Sessions[0].Jev
+	if got == nil || got.Priority != "high" || got.PrimaryValue != "correction_value" || !got.ReviewRequired || got.InputTokens != 123 {
+		t.Fatalf("assessment=%+v", got)
+	}
+	if fake.state == nil {
+		t.Fatal("structured state was not sent")
+	}
+}
+
+func TestDistillJevRequiresKey(t *testing.T) {
+	t.Setenv("JEV_API_KEY", "")
+	t.Setenv("TYPESAFE_API_KEY", "")
+	now := time.Date(2026, 9, 16, 14, 40, 0, 0, time.UTC)
+	var buf bytes.Buffer
+	err := Run(&buf, []string{"distill", "--cwd", "/workspace/oauth-app", "--session", "0001", "--jev"}, fixtureHome(t), now)
+	if !errors.Is(err, jev.ErrMissingAPIKey) {
+		t.Fatalf("error=%v want ErrMissingAPIKey", err)
 	}
 }
 
@@ -227,5 +327,88 @@ func TestNoOpenAIKeyRequired(t *testing.T) {
 	out := run(t)
 	if !strings.Contains(out, "SESSION TOP") {
 		t.Fatalf("ran without API key but got:\n%s", out)
+	}
+}
+
+type lowJevAssessor struct{}
+
+func (lowJevAssessor) Assess(context.Context, any) (jev.Assessment, error) {
+	return jev.Assessment{
+		Model:             "jev-test",
+		DistillPriority:   jev.ChoiceAnswer{Choice: "low"},
+		PrimaryValue:      jev.ChoiceAnswer{Choice: "none"},
+		ReusableKnowledge: jev.NoulAnswer{Noul: 0.1},
+		VerifiedEvidence:  jev.NoulAnswer{Noul: 0.2},
+		CorrectionValue:   jev.NoulAnswer{Noul: 0.05},
+	}, nil
+}
+
+type recordingArchiver struct {
+	ids []string
+	err error
+}
+
+func (r *recordingArchiver) Archive(_ context.Context, id string) (*archive.Result, error) {
+	r.ids = append(r.ids, id)
+	if r.err != nil {
+		return nil, r.err
+	}
+	return &archive.Result{SessionID: id}, nil
+}
+
+func archiveTestAnalysis(now time.Time, project string) *usage.Analysis {
+	conversation := []codex.ConversationItem{
+		{Kind: "user", Text: "check the result"},
+		{Kind: "assistant", Text: "nothing reusable was produced"},
+	}
+	return &usage.Analysis{Sessions: []usage.SessionSummary{
+		{ID: "old-low", Title: "Low-value attempt", CWD: project, StartedAt: now.Add(-8 * 24 * time.Hour), Conversation: conversation},
+		{ID: "recent-low", Title: "Recent attempt", CWD: project, StartedAt: now.Add(-24 * time.Hour), Conversation: conversation},
+	}}
+}
+
+func TestRunDistillArchiveLowDryRunDoesNotArchive(t *testing.T) {
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+	project := t.TempDir()
+	archiver := &recordingArchiver{}
+	deps := distillDeps{
+		newJev:   func() (jevAssessor, error) { return lowJevAssessor{}, nil },
+		archiver: archiver,
+		getenv:   func(string) string { return "" },
+	}
+	var buf bytes.Buffer
+	err := runDistillWithDeps(&buf, []string{"--cwd", project, "--jev", "--archive-low", "--json"}, archiveTestAnalysis(now, project), now, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archiver.ids) != 0 {
+		t.Fatalf("dry-run archived %v", archiver.ids)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `"status": "candidate"`) || !strings.Contains(out, `"status": "protected"`) {
+		t.Fatalf("archive decisions missing:\n%s", out)
+	}
+}
+
+func TestRunDistillArchiveLowApplyArchivesOnlyEligible(t *testing.T) {
+	now := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+	project := t.TempDir()
+	archiver := &recordingArchiver{}
+	deps := distillDeps{
+		newJev:   func() (jevAssessor, error) { return lowJevAssessor{}, nil },
+		archiver: archiver,
+		getenv:   func(string) string { return "" },
+	}
+	var buf bytes.Buffer
+	err := runDistillWithDeps(&buf, []string{"--cwd", project, "--jev", "--archive-low", "--apply", "--json"}, archiveTestAnalysis(now, project), now, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archiver.ids) != 1 || archiver.ids[0] != "old-low" {
+		t.Fatalf("archived ids=%v", archiver.ids)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `"status": "archived"`) || !strings.Contains(out, `"status": "protected"`) {
+		t.Fatalf("archive results missing:\n%s", out)
 	}
 }

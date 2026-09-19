@@ -32,6 +32,14 @@ func TestDontLetYourTokenDieSkill(t *testing.T) {
 		"auto-install",
 		"distill",
 		"token",
+		"--jev",
+		"JEV_API_KEY",
+		"context_coverage",
+		"assistant",
+		"--archive-low",
+		"--apply",
+		"codex unarchive",
+		"not deletion",
 	}
 	for _, p := range paths {
 		b, err := os.ReadFile(p)

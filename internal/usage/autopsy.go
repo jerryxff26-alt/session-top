@@ -113,7 +113,11 @@ func isCorrectionPrompt(text string) bool {
 	if t == "" {
 		return false
 	}
-	keys := []string{"don't", "do not", "不要", "别", "谁让你", "stop changing", "never "}
+	keys := []string{
+		"don't", "do not", "stop changing", "never ",
+		"不要", "别", "谁让你", "不对", "错了", "不是这样", "改为", "改成",
+		"只读取了", "没有考虑", "遗漏", "漏了", "重新",
+	}
 	for _, k := range keys {
 		if strings.Contains(t, k) {
 			return true
