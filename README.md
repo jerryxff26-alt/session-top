@@ -21,7 +21,7 @@ README           0.3%
 
 session-top makes coding-agent usage observable and explainable.
 
-**v0.1.0** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
+**v0.0.2** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
 
 Quick start: see [Install](#install) below.
 
@@ -143,7 +143,7 @@ Some Codex modes (historically `codex exec`) record `rate_limits: null`. OBSERVE
 
 Supports Codex CLI rollouts on macOS and Linux.
 
-Docs target **v0.1** (release tag may still show `v0.0.1`).
+Current release tag is **v0.0.2**.
 
 Not in v0.1: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, JSON export, anomaly detection, multi-machine, historical trends.
 
