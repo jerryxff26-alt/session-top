@@ -40,7 +40,14 @@ func latestOfficial(snaps []codex.QuotaSnapshot) OfficialQuota {
 		if out.Weekly == nil && s.Weekly != nil {
 			out.Weekly = cloneWindow(s.Weekly)
 		}
-		if out.FiveHour != nil && out.Weekly != nil {
+		if out.PlanType == "" && s.PlanType != "" {
+			out.PlanType = s.PlanType
+		}
+		if out.Credits == nil && s.Credits != nil {
+			cp := *s.Credits
+			out.Credits = &cp
+		}
+		if out.FiveHour != nil && out.Weekly != nil && out.PlanType != "" && out.Credits != nil {
 			break
 		}
 	}

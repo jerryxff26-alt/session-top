@@ -52,6 +52,7 @@ func buildWhy(rollouts []*codex.Rollout, sessions []SessionSummary, deltas []sna
 		for _, e := range r.Usage {
 			if inWin(e.Time) {
 				obs.InputTokens += e.Delta.Input
+				obs.CachedTokens += e.Delta.CachedInput
 				obs.OutputTokens += e.Delta.Output
 			}
 		}

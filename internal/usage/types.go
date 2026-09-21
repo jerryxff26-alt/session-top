@@ -23,6 +23,8 @@ type OfficialQuota struct {
 	FiveHour *QuotaWindow
 	Weekly   *QuotaWindow
 	HasQuota bool
+	PlanType string             // OFFICIAL plan_type when present on rate_limits
+	Credits  *codex.CreditsInfo // OFFICIAL credits blob when present; never synthesized
 }
 
 // QuotaWindow is one OFFICIAL remaining bar.
@@ -36,11 +38,12 @@ type QuotaWindow struct {
 // TodayStats is OBSERVED activity on the local calendar day of GeneratedAt,
 // plus INFERRED 5h quota consumed across today's snapshots.
 type TodayStats struct {
-	Sessions  int
-	Turns     int
-	Tokens    int64
-	QuotaUsed *float64 // INFERRED 5h used today (last-first, resets skipped)
-	HasQuota  bool
+	Sessions     int
+	Turns        int
+	Tokens       int64
+	CachedTokens int64    // OBSERVED cached input tokens today (when events expose them)
+	QuotaUsed    *float64 // INFERRED 5h used today (last-first, resets skipped)
+	HasQuota     bool
 }
 
 // SessionSummary is one session's OBSERVED totals plus unique INFERRED 5h Δ.
@@ -73,6 +76,7 @@ type SessionSummary struct {
 	Corrections           []string
 	Conversation          []codex.ConversationItem
 	SkippedContextItems   int
+	Archived              bool // session file lives under archived_sessions/
 	Autopsy               Autopsy
 }
 
@@ -152,6 +156,7 @@ type WhyReport struct {
 // WhyObserved is OBSERVED activity inside the why window.
 type WhyObserved struct {
 	InputTokens  int64
+	CachedTokens int64 // OBSERVED cached input when token events expose it
 	OutputTokens int64
 	Turns        int
 	Compactions  int

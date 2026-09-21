@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jerryxff26-alt/session-top/internal/codex"
 )
 
 func formatTokens(n int64) string {
@@ -195,4 +196,22 @@ func rule(n int) string {
 		n = 52
 	}
 	return strings.Repeat("─", n)
+}
+
+func formatCredits(c *codex.CreditsInfo) string {
+	if c == nil {
+		return ""
+	}
+	switch {
+	case c.Unlimited:
+		return "unlimited"
+	case c.HasCredits && c.Balance != "":
+		return c.Balance
+	case c.HasCredits:
+		return "yes"
+	case c.Balance != "":
+		return c.Balance
+	default:
+		return "none"
+	}
 }
