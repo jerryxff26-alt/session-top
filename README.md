@@ -21,7 +21,7 @@ README           0.3%
 
 session-top makes coding-agent usage observable and explainable.
 
-**v0.0.2** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
+**v0.0.3** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
 
 Quick start: see [Install](#install) below.
 
@@ -39,7 +39,7 @@ make
 Or:
 
 ```
-go install github.com/jerryxff26-alt/session-top/cmd/session-top@latest
+go install github.com/jerryxff26-alt/session-top/cmd/session-top@v0.0.3
 session-top
 ```
 
@@ -145,15 +145,15 @@ Live process monitors (for example **abtop**) show what agents are doing *right 
 
 **session-top** is a **quota autopsy**: it explains *why* official Codex rate-limit % moved, using OFFICIAL snapshots, OBSERVED token mix (including cached vs uncached when present), and INFERRED attribution. It does not compete feature-for-feature with live monitors.
 
-## Scope (v0.0.2)
+## Scope (v0.0.3)
 
 Supports Codex CLI rollouts on macOS and Linux, including **archived sessions** under `~/.codex/archived_sessions`.
 
-Current release tag is **v0.0.2**.
+Current release tag is **v0.0.3**.
 
 `--json` is available on overview / why / sessions (and distill), matching distill's machine-readable style.
 
-Not in v0.0.2: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, anomaly detection, multi-machine, historical trends.
+Not in v0.0.3: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, anomaly detection, multi-machine, historical trends.
 
 ## Design
 
