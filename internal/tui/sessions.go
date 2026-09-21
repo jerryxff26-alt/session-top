@@ -58,6 +58,9 @@ func Sessions(a *usage.Analysis) string {
 		if title == "" {
 			title = s.ID
 		}
+		if s.Archived {
+			title = title + " [archived]"
+		}
 		id := shortSessionID(s.ID)
 		b.WriteString(sessionsRow(
 			id,

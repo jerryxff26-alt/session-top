@@ -59,15 +59,15 @@ skills/dont-let-your-token-die          orchestrator skill (copy into Codex/Grok
 ## Usage
 
 ```
-session-top              # 5h / weekly overview, today, top consumers
-session-top why          # potential causes for a recent quota drop
-session-top sessions     # rank sessions by inferred quota Δ
-session-top session <id> # turn timeline for one session
-session-top watch        # live-refreshing view
-session-top distill      # bounded project digest; optional Jev archive preview/apply
+session-top [--json]              # 5h / weekly overview, today, top consumers
+session-top why [--json]          # potential causes for a recent quota drop
+session-top sessions [--json]     # rank sessions by inferred quota Δ
+session-top session <id>          # turn timeline for one session
+session-top watch                 # live-refreshing view
+session-top distill               # bounded project digest; optional Jev archive preview/apply
 ```
 
-Codex data is read from `~/.codex/sessions/**/rollout-*.jsonl`. Override the Codex home directory with `CODEX_HOME`.
+Codex data is read from `~/.codex/sessions/**/rollout-*.jsonl` and `~/.codex/archived_sessions/**/rollout-*.jsonl` (active sessions preferred when the same file exists in both). Override the Codex home directory with `CODEX_HOME`.
 
 ## Skill: dont-let-your-token-die
 
@@ -119,8 +119,8 @@ OpenAI does not publish a formula that maps tokens × model × reasoning × cach
 
 | Class | Meaning |
 | --- | --- |
-| **OFFICIAL** | Quota % and reset times the agent stored from the provider (`rate_limits`) |
-| **OBSERVED** | Tokens, turns, models, tool calls, compactions from local session events |
+| **OFFICIAL** | Quota % and reset times the agent stored from the provider (`rate_limits`), plus `plan_type` / `credits` when present |
+| **OBSERVED** | Tokens (including cached vs uncached input when recorded), turns, models, tool calls, compactions from local session events |
 | **INFERRED** | Quota Δ between consecutive official snapshots, attributed only when a single session was active |
 
 If two sessions overlap an interval, that Δ is **Attribution: ambiguous** — listed, not guessed.
@@ -139,13 +139,21 @@ Some Codex modes (historically `codex exec`) record `rate_limits: null`. OBSERVE
 
 **100% local by default.** `--jev` is the opt-in network path.
 
-## Scope (v0.1)
+## Compare
 
-Supports Codex CLI rollouts on macOS and Linux.
+Live process monitors (for example **abtop**) show what agents are doing *right now* — CPU, running processes, live turn activity.
+
+**session-top** is a **quota autopsy**: it explains *why* official Codex rate-limit % moved, using OFFICIAL snapshots, OBSERVED token mix (including cached vs uncached when present), and INFERRED attribution. It does not compete feature-for-feature with live monitors.
+
+## Scope (v0.0.2)
+
+Supports Codex CLI rollouts on macOS and Linux, including **archived sessions** under `~/.codex/archived_sessions`.
 
 Current release tag is **v0.0.2**.
 
-Not in v0.1: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, JSON export, anomaly detection, multi-machine, historical trends.
+`--json` is available on overview / why / sessions (and distill), matching distill's machine-readable style.
+
+Not in v0.0.2: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, anomaly detection, multi-machine, historical trends.
 
 ## Design
 

@@ -37,6 +37,10 @@ func buildSessions(rollouts []*codex.Rollout, unique map[string]float64, ambIDs 
 		if out[i].ObservedTokens != out[j].ObservedTokens {
 			return out[i].ObservedTokens > out[j].ObservedTokens
 		}
+		// active sessions before archived when otherwise equal
+		if out[i].Archived != out[j].Archived {
+			return !out[i].Archived && out[j].Archived
+		}
 		return out[i].StartedAt.Before(out[j].StartedAt)
 	})
 	return out
@@ -56,6 +60,7 @@ func summarize(r *codex.Rollout, snaps []codex.QuotaSnapshot) SessionSummary {
 		TopTools:              tallyTools(r.Tools),
 		Conversation:          append([]codex.ConversationItem(nil), r.Conversation...),
 		SkippedContextItems:   r.SkippedConversationItems,
+		Archived:              r.Session.Archived,
 	}
 	if s.Turns == 0 {
 		s.Turns = len(r.Usage)
@@ -376,6 +381,7 @@ func todayStats(sessions []SessionSummary, deltas []snapshotDelta, now time.Time
 			st.Sessions++
 			st.Turns += s.Turns
 			st.Tokens += s.ObservedTokens
+			st.CachedTokens += s.CachedTokens
 		}
 	}
 	st.QuotaUsed = inferredToday(deltas, now)

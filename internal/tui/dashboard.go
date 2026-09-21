@@ -39,6 +39,10 @@ func Overview(a *usage.Analysis) string {
 	fmt.Fprintf(&b, "%s %s\n", padRight("Sessions", 20), fmt.Sprintf("%d", a.Today.Sessions))
 	fmt.Fprintf(&b, "%s %s\n", padRight("Turns", 20), fmt.Sprintf("%d", a.Today.Turns))
 	fmt.Fprintf(&b, "%s %s\n", padRight("Observed tokens", 20), formatTokens(a.Today.Tokens))
+	if a.Today.Tokens > 0 && a.Today.CachedTokens > 0 {
+		share := 100 * float64(a.Today.CachedTokens) / float64(a.Today.Tokens)
+		fmt.Fprintf(&b, "%s %s cached (%s of observed)\n", padRight("Cache mix", 20), formatTokens(a.Today.CachedTokens), formatPct(share))
+	}
 	if a.Today.HasQuota && a.Today.QuotaUsed != nil {
 		fmt.Fprintf(&b, "%s %s\n", padRight("5h quota used", 20), formatPct(*a.Today.QuotaUsed))
 	} else {
@@ -89,6 +93,12 @@ func writeQuotaBars(b *strings.Builder, a *usage.Analysis) {
 	}
 	writeBar("5h", a.Official.FiveHour)
 	writeBar("Weekly", a.Official.Weekly)
+	if a.Official.PlanType != "" {
+		fmt.Fprintf(b, "%s %s\n", padRight("Plan", 8), a.Official.PlanType)
+	}
+	if c := a.Official.Credits; c != nil {
+		fmt.Fprintf(b, "%s %s\n", padRight("Credits", 8), formatCredits(c))
+	}
 }
 
 // WriteOverview writes the overview to w.

@@ -123,6 +123,12 @@ func RenderWatch(a *usage.Analysis) string {
 		writeLiveBar("5h", a.Official.FiveHour)
 	}
 	writeLiveBar("Weekly", a.Official.Weekly)
+	if a.Official.PlanType != "" {
+		fmt.Fprintf(&b, "%s %s\n", padRight("Plan", 8), a.Official.PlanType)
+	}
+	if c := a.Official.Credits; c != nil {
+		fmt.Fprintf(&b, "%s %s\n", padRight("Credits", 8), formatCredits(c))
+	}
 	b.WriteByte('\n')
 	b.WriteString(titleStyle.Render("CURRENT SESSION"))
 	b.WriteByte('\n')

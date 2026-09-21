@@ -85,6 +85,7 @@ func Load(home string, now time.Time) (*Analysis, error) {
 		if r.Session.ID == "" {
 			continue
 		}
+		r.Session.Archived = codex.IsArchivedPath(f)
 		rollouts = append(rollouts, r)
 	}
 	return Analyze(rollouts, now), nil

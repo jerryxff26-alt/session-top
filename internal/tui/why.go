@@ -35,6 +35,9 @@ func Why(a *usage.Analysis) string {
 	b.WriteByte('\n')
 	b.WriteString("Observed:\n")
 	fmt.Fprintf(&b, "%s %s\n", padRight("Input tokens", 28), formatTokens(w.Observed.InputTokens))
+	if w.Observed.CachedTokens > 0 {
+		fmt.Fprintf(&b, "%s %s\n", padRight("Cached input", 28), formatTokens(w.Observed.CachedTokens))
+	}
 	fmt.Fprintf(&b, "%s %s\n", padRight("Output tokens", 28), formatTokens(w.Observed.OutputTokens))
 	fmt.Fprintf(&b, "%s %d\n", padRight("Turns", 28), w.Observed.Turns)
 	fmt.Fprintf(&b, "%s %d\n", padRight("Context compactions", 28), w.Observed.Compactions)

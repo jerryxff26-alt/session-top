@@ -43,6 +43,7 @@ type Session struct {
 	Provider   string
 	StartedAt  time.Time
 	File       string
+	Archived   bool // true when discovered under archived_sessions/
 }
 
 // UsageEvent is one OBSERVED token delta (re-emits with unchanged totals are dropped).
