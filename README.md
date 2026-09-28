@@ -1,7 +1,7 @@
 # session-top
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 
 htop for your agent sessions.
 
@@ -21,13 +21,13 @@ README           0.3%
 
 session-top makes coding-agent usage observable and explainable.
 
-**v0.0.3** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
+**v0.0.4** reads **Codex CLI** rollouts only. The name is about sessions, not a single vendor.
 
 Quick start: see [Install](#install) below.
 
 ## Install
 
-From source (Go 1.23+):
+From source (Go 1.24+):
 
 ```
 git clone https://github.com/jerryxff26-alt/session-top.git
@@ -39,7 +39,7 @@ make
 Or:
 
 ```
-go install github.com/jerryxff26-alt/session-top/cmd/session-top@v0.0.3
+go install github.com/jerryxff26-alt/session-top/cmd/session-top@v0.0.4
 session-top
 ```
 
@@ -143,17 +143,19 @@ Some Codex modes (historically `codex exec`) record `rate_limits: null`. OBSERVE
 
 Live process monitors (for example **abtop**) show what agents are doing *right now* — CPU, running processes, live turn activity.
 
-**session-top** is a **quota autopsy**: it explains *why* official Codex rate-limit % moved, using OFFICIAL snapshots, OBSERVED token mix (including cached vs uncached when present), and INFERRED attribution. It does not compete feature-for-feature with live monitors.
+Live account-quota CLIs (for example **codex-cli-usage** / **codex-limits**) answer “how much quota is left *now*” via Codex auth / app-server.
 
-## Scope (v0.0.3)
+**session-top** is a **quota autopsy**: it explains *why* official Codex rate-limit % moved across local rollout history, using OFFICIAL snapshots, OBSERVED token mix (including cached vs uncached when present), and INFERRED attribution. It does not replace live monitors or live account-quota dashboards.
+
+## Scope (v0.0.4)
 
 Supports Codex CLI rollouts on macOS and Linux, including **archived sessions** under `~/.codex/archived_sessions`.
 
-Current release tag is **v0.0.3**.
+Current release tag is **v0.0.4**.
 
 `--json` is available on overview / why / sessions (and distill), matching distill's machine-readable style.
 
-Not in v0.0.3: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, anomaly detection, multi-machine, historical trends.
+Not in v0.0.4: other agents, Windows, Codex Desktop / VS Code / Cursor, roast reports, anomaly detection, multi-machine, historical trends.
 
 ## Design
 

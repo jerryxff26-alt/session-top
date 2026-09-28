@@ -1,5 +1,5 @@
 BIN := session-top
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.0.2)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.0.4)
 LDFLAGS := -X github.com/jerryxff26-alt/session-top/internal/cli.Version=$(VERSION)
 
 .PHONY: all build test vet fmt clean install
